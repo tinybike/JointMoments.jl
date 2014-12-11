@@ -1,5 +1,4 @@
 using JointMoments
-using StatsBase
 using Base.Test
 
 tests = ["data",
