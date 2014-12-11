@@ -1,5 +1,15 @@
 using JointMoments
+using StatsBase
 using Base.Test
 
-# write your own tests here
-@test 1 == 1
+tests = ["data",
+         "tensors", 
+         "statistics"]
+
+println("Running tests:")
+
+for t in tests
+    tfile = string(t, ".jl")
+    println(" * $(tfile) ...")
+    include(tfile)
+end

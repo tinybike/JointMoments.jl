@@ -1,5 +1,9 @@
 module JointMoments
 
-# package code goes here
+export normalize, coskew, cokurt, coskewness, cokurtosis
+
+include("tensors.jl")
+
+include("statistics.jl")
 
 end # module
