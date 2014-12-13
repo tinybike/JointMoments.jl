@@ -8,7 +8,7 @@ Tensors and statistics for joint central moments.
 
 Installation:
 
-    julia> Pkg.clone("git://github.com/tensorjack/JointMoments.jl.git")
+    julia> Pkg.add("JointMoments")
 
 Use:
 
