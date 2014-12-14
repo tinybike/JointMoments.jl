@@ -26,3 +26,9 @@ end
 
 @test_approx_eq_eps coskewness(data, wt, standardize=true) 0.148687894 ε
 @test_approx_eq_eps cokurtosis(data, wt, standardize=true) 0.664085775 ε
+
+@test_approx_eq_eps coskewness(data) 0.081011176 ε
+@test_approx_eq_eps cokurtosis(data) 0.571876949 ε
+
+@test_approx_eq_eps coskewness(data, bias=1) 0.084533401 ε
+@test_approx_eq_eps cokurtosis(data, bias=1) 0.596741164 ε

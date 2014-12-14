@@ -19,7 +19,7 @@ Use:
                    -1.62089   -0.44919   1.20592 
                    -1.06458   -0.68214  -1.12841 ];
 
-    julia> weights = [1.0, 0.1, 0.5];
+Third and fourth joint central moment tensors:
 
     julia> coskew(data)
     3x3x3 Array{Float64,3}:
@@ -37,9 +37,6 @@ Use:
      0.773618  0.350696   0.451934
      0.350696  0.156275   0.131448
      0.451934  0.131448  -0.645484
-
-    julia> coskewness(data, weights)
-    0.467586
 
     julia> cokurt(data)
     3x3x3x3 Array{Float64,4}:
@@ -88,11 +85,25 @@ Use:
      0.97585  0.58726  1.73728
      2.69607  1.73728  5.85635
 
-    julia> cokurtosis(data, weights)
-    1-element Array{Float64,1}:
-     1.32039
+Statistics:
 
-The `coskew` and `cokurt` functions can also return flattened/unfolded versions of the cumulant tensors:
+    julia> coskewness(data)
+    0.2838850631006579
+
+    julia> cokurtosis(data)
+    0.8916763961210045
+
+`coskewness` and `cokurtosis` can use an optional weight vector, which assigns a weight to each column of the data matrix:
+
+    julia> weights = [1.0, 0.1, 0.5];
+
+    julia> coskewness(data, weights)
+    0.46758589701357833
+
+    julia> cokurtosis(data, weights)
+    1.3203902349727108
+
+The `coskew` and `cokurt` functions can also return flattened/unfolded tensors:
 
     julia> coskew(data, flatten=true)
     3x9 Array{Float64,2}:
@@ -100,7 +111,20 @@ The `coskew` and `cokurt` functions can also return flattened/unfolded versions 
      0.26697   0.162051  0.350696  0.162051  0.0852269  0.156275  0.350696  0.156275   0.131448
      0.773618  0.350696  0.451934  0.350696  0.156275   0.131448  0.451934  0.131448  -0.645484
 
+     julia> cokurt(data,flatten=true)
+    3x27 Array{Float64,2}:
+     2.12678   1.11885   0.474782  1.11885    1.12294     0.187331   0.474782   0.187331   1.15524   1.11885   …  0.276558  0.474782   0.187331   1.15524    0.187331   -0.0266349  0.276558  1.15524   0.276558  0.178083
+     1.11885   1.12294   0.187331  1.12294    1.40462    -0.0266349  0.187331  -0.0266349  0.276558  1.12294      0.779221  0.187331  -0.0266349  0.276558  -0.0266349  -0.517198   0.779221  0.276558  0.779221  0.218732
+     0.474782  0.187331  1.15524   0.187331  -0.0266349   0.276558   1.15524    0.276558   0.178083  0.187331     0.218732  1.15524    0.276558   0.178083   0.276558    0.779221   0.218732  0.178083  0.218732  5.98947 
+
+The `coskew`, `cokurt`, `coskewness`, and `cokurtosis` functions have `standardize` and `bias` keyword arguments.  Setting `standardize=true` standardizes the elements of the joint moment tensors (divides by the standard deviation).  Setting `bias=1` uses Bessel's correction (divides by `N-1` instead of `N`).
 
 ### Tests
 
+Unit tests can be run from the command line:
+
     $ julia test/runtests.jl
+
+Or from the Julia prompt:
+
+    julia> Pkg.test("JointMoments")
