@@ -1,6 +1,6 @@
 # JointMoments
 
-[![Build Status](https://travis-ci.org/tensorjack/JointMoments.jl.svg?branch=master)](https://travis-ci.org/tensorjack/JointMoments.jl) [![Coverage Status](https://coveralls.io/repos/tensorjack/JointMoments.jl/badge.png)](https://coveralls.io/r/tensorjack/JointMoments.jl) [![JointMoments](http://pkg.julialang.org/badges/JointMoments_nightly.svg)](http://pkg.julialang.org/?pkg=JointMoments&ver=nightly)
+[![Build Status](https://travis-ci.org/tinybike/JointMoments.jl.svg?branch=master)](https://travis-ci.org/tinybike/JointMoments.jl) [![Coverage Status](https://coveralls.io/repos/tinybike/JointMoments.jl/badge.png)](https://coveralls.io/r/tinybike/JointMoments.jl) [![JointMoments](http://pkg.julialang.org/badges/JointMoments_nightly.svg)](http://pkg.julialang.org/?pkg=JointMoments&ver=nightly)
 
 Tensors and statistics for joint central moments.
 
