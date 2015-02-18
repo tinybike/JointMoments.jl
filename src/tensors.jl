@@ -63,41 +63,41 @@ function coskew{T<:Real}(data::Array{T}; standardize=false, flatten=false, bias=
     else
         tensor = zeros(num_signals, num_signals, num_signals)
         if standardize
-            @inbounds for i = 1:num_signals
-                i_mean = mean(data[:,i])
-                i_std = _stddev(data[:,i], i_mean, bias)
-                @inbounds for j = 1:num_signals
-                    j_mean = mean(data[:,j])
-                    j_std = _stddev(data[:,j], j_mean, bias)
-                    @inbounds for k = 1:num_signals
-                        k_mean = mean(data[:,k])
-                        k_std = _stddev(data[:,k], k_mean, bias)
+            @simd for i = 1:num_signals
+                @inbounds i_mean = mean(data[:,i])
+                @inbounds i_std = _stddev(data[:,i], i_mean, bias)
+                @simd for j = 1:num_signals
+                    @inbounds j_mean = mean(data[:,j])
+                    @inbounds j_std = _stddev(data[:,j], j_mean, bias)
+                    @simd for k = 1:num_signals
+                        @inbounds k_mean = mean(data[:,k])
+                        @inbounds k_std = _stddev(data[:,k], k_mean, bias)
                         prod = 0
-                        @inbounds for t = 1:num_samples 
-                            i_term = (data[t,i] - i_mean) / i_std
-                            j_term = (data[t,j] - j_mean) / j_std 
-                            k_term = (data[t,k] - k_mean) / k_std
+                        @simd for t = 1:num_samples 
+                            @inbounds i_term = (data[t,i] - i_mean) / i_std
+                            @inbounds j_term = (data[t,j] - j_mean) / j_std 
+                            @inbounds k_term = (data[t,k] - k_mean) / k_std
                             prod +=  i_term * j_term * k_term
                         end
-                        tensor[i,j,k] = prod / (num_samples - bias)
+                        @inbounds tensor[i,j,k] = prod / (num_samples - bias)
                     end
                 end
             end
         else
-            @inbounds for i = 1:num_signals
-                i_mean = mean(data[:,i])
-                @inbounds for j = 1:num_signals
-                    j_mean = mean(data[:,j])
-                    @inbounds for k = 1:num_signals
-                        k_mean = mean(data[:,k])
+            @simd for i = 1:num_signals
+                @inbounds i_mean = mean(data[:,i])
+                @simd for j = 1:num_signals
+                    @inbounds j_mean = mean(data[:,j])
+                    @simd for k = 1:num_signals
+                        @inbounds k_mean = mean(data[:,k])
                         prod = 0
-                        @inbounds for t = 1:num_samples 
-                            i_term = data[t,i] - i_mean
-                            j_term = data[t,j] - j_mean
-                            k_term = data[t,k] - k_mean
+                        @simd for t = 1:num_samples 
+                            @inbounds i_term = data[t,i] - i_mean
+                            @inbounds j_term = data[t,j] - j_mean
+                            @inbounds k_term = data[t,k] - k_mean
                             prod +=  i_term * j_term * k_term
                         end
-                        tensor[i,j,k] = prod / (num_samples - bias)
+                        @inbounds tensor[i,j,k] = prod / (num_samples - bias)
                     end
                 end
             end
@@ -166,49 +166,49 @@ function cokurt{T<:Real}(data::Array{T}; standardize=false, flatten=false, bias=
     else
         tensor = zeros(num_signals, num_signals, num_signals, num_signals)
         if standardize
-            @inbounds for i = 1:num_signals
-                i_mean = mean(data[:,i])
-                i_std = _stddev(data[:,i], i_mean, bias)
-                @inbounds for j = 1:num_signals
-                    j_mean = mean(data[:,j])
-                    j_std = _stddev(data[:,j], j_mean, bias)
-                    @inbounds for k = 1:num_signals
-                        k_mean = mean(data[:,k])
-                        k_std = _stddev(data[:,k], k_mean, bias)
-                        @inbounds for l = 1:num_signals
-                            l_mean = mean(data[:,l])
-                            l_std = _stddev(data[:,l], l_mean, bias)
+            @simd for i = 1:num_signals
+                @inbounds i_mean = mean(data[:,i])
+                @inbounds i_std = _stddev(data[:,i], i_mean, bias)
+                @simd for j = 1:num_signals
+                    @inbounds j_mean = mean(data[:,j])
+                    @inbounds j_std = _stddev(data[:,j], j_mean, bias)
+                    @simd for k = 1:num_signals
+                        @inbounds k_mean = mean(data[:,k])
+                        @inbounds k_std = _stddev(data[:,k], k_mean, bias)
+                        @simd for l = 1:num_signals
+                            @inbounds l_mean = mean(data[:,l])
+                            @inbounds l_std = _stddev(data[:,l], l_mean, bias)
                             prod = 0
-                            @inbounds for t = 1:num_samples 
-                                i_term = (data[t,i] - i_mean) / i_std
-                                j_term = (data[t,j] - j_mean) / j_std 
-                                k_term = (data[t,k] - k_mean) / k_std
-                                l_term = (data[t,l] - l_mean) / l_std
+                            @simd for t = 1:num_samples 
+                                @inbounds i_term = (data[t,i] - i_mean) / i_std
+                                @inbounds j_term = (data[t,j] - j_mean) / j_std 
+                                @inbounds k_term = (data[t,k] - k_mean) / k_std
+                                @inbounds l_term = (data[t,l] - l_mean) / l_std
                                 prod += i_term * j_term * k_term * l_term
                             end
-                            tensor[i,j,k,l] = prod / (num_samples - bias)
+                            @inbounds tensor[i,j,k,l] = prod / (num_samples - bias)
                         end
                     end
                 end
             end
         else
-            @inbounds for i = 1:num_signals
-                i_mean = mean(data[:,i])
-                @inbounds for j = 1:num_signals
-                    j_mean = mean(data[:,j])
-                    @inbounds for k = 1:num_signals
-                        k_mean = mean(data[:,k])
-                        @inbounds for l = 1:num_signals
-                            l_mean = mean(data[:,l])
+            @simd for i = 1:num_signals
+                @inbounds i_mean = mean(data[:,i])
+                @simd for j = 1:num_signals
+                    @inbounds j_mean = mean(data[:,j])
+                    @simd for k = 1:num_signals
+                        @inbounds k_mean = mean(data[:,k])
+                        @simd for l = 1:num_signals
+                            @inbounds l_mean = mean(data[:,l])
                             prod = 0
-                            @inbounds for t = 1:num_samples 
-                                i_term = data[t,i] - i_mean
-                                j_term = data[t,j] - j_mean
-                                k_term = data[t,k] - k_mean
-                                l_term = data[t,l] - l_mean
+                            @simd for t = 1:num_samples 
+                                @inbounds i_term = data[t,i] - i_mean
+                                @inbounds j_term = data[t,j] - j_mean
+                                @inbounds k_term = data[t,k] - k_mean
+                                @inbounds l_term = data[t,l] - l_mean
                                 prod += i_term * j_term * k_term * l_term
                             end
-                            tensor[i,j,k,l] = prod / (num_samples - bias)
+                            @inbounds tensor[i,j,k,l] = prod / (num_samples - bias)
                         end
                     end
                 end
