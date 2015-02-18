@@ -16,12 +16,7 @@ end
 function _covar{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     num_samples, num_signals = size(data)
     tensor = zeros(num_signals, num_signals)
-
-    # Averages along each dimension
-    @inbounds begin
-        i_mean = mean(data, 1)
-        j_mean = mean(data, 2)
-    end
+    @inbounds col_mean = mean(data, 1)
 
     # Dense matrix (all values are calculated, including duplicates)
     if dense
@@ -30,8 +25,8 @@ function _covar{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
                 prod = 0
                 @simd for t = 1:num_samples
                     @inbounds begin
-                        i_term = data[t,i] - i_mean[i]
-                        j_term = data[t,j] - j_mean[j]
+                        i_term = data[t,i] - col_mean[i]
+                        j_term = data[t,j] - col_mean[j]
                     end
                     prod +=  i_term * j_term
                 end
@@ -48,8 +43,8 @@ function _covar{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
                 prod = 0
                 @simd for t = 1:num_samples 
                     @inbounds begin
-                        i_term = data[t,i] - i_mean[i]
-                        j_term = data[t,j] - j_mean[j]
+                        i_term = data[t,i] - col_mean[i]
+                        j_term = data[t,j] - col_mean[j]
                     end
                     prod +=  i_term * j_term
                 end
@@ -67,33 +62,29 @@ function coskew{T<:Real}(data::Matrix{T};
                          bias::Int=0,
                          dense::Bool=true)
     num_samples, num_signals = size(data)
-
-    # Averages along each dimension
-    @inbounds begin
-        i_mean = mean(data, 1)
-        j_mean = mean(data, 2)
-        k_mean = mean(data, 3)
-    end
+    @inbounds col_mean = mean(data, 1)
 
     # Flattened representation (i.e., unfolded into a matrix)
     if flatten
         tensor = []
         if standardize
             @inbounds for i = 1:num_signals
-                i_std = _stddev(data[:,i], i_mean, bias)
+                i_std = _stddev(data[:,i], col_mean[i], bias)
                 face = zeros(num_signals, num_signals)
-                @inbounds for j = 1:num_signals
-                    j_std = _stddev(data[:,j], j_mean, bias)
-                    @inbounds for k = 1:num_signals
-                        k_std = _stddev(data[:,k], k_mean, bias)
+                @simd for j = 1:num_signals
+                    j_std = _stddev(data[:,j], col_mean[j], bias)
+                    @simd for k = 1:num_signals
+                        k_std = _stddev(data[:,k], col_mean[k], bias)
                         prod = 0
-                        @inbounds for t = 1:num_samples 
-                            i_term = (data[t,i] - i_mean[i]) / i_std
-                            j_term = (data[t,j] - j_mean[j]) / j_std 
-                            k_term = (data[t,k] - k_mean[k]) / k_std
+                        @simd for t = 1:num_samples 
+                            @inbounds begin
+                                i_term = (data[t,i] - col_mean[i]) / i_std
+                                j_term = (data[t,j] - col_mean[j]) / j_std 
+                                k_term = (data[t,k] - col_mean[k]) / k_std
+                            end
                             prod += i_term * j_term * k_term
                         end
-                        face[j,k] = prod / (num_samples - bias)
+                        @inbounds face[j,k] = prod / (num_samples - bias)
                     end
                 end
                 tensor = (i == 1) ? face : [tensor face]
@@ -101,16 +92,18 @@ function coskew{T<:Real}(data::Matrix{T};
         else
             @inbounds for i = 1:num_signals
                 face = zeros(num_signals, num_signals)
-                @inbounds for j = 1:num_signals
-                    @inbounds for k = 1:num_signals
+                @simd for j = 1:num_signals
+                    @simd for k = 1:num_signals
                         prod = 0
-                        @inbounds for t = 1:num_samples 
-                            i_term = data[t,i] - i_mean[i]
-                            j_term = data[t,j] - j_mean[j]
-                            k_term = data[t,k] - k_mean[k]
+                        @simd for t = 1:num_samples
+                            @inbounds begin
+                                i_term = data[t,i] - col_mean[i]
+                                j_term = data[t,j] - col_mean[j]
+                                k_term = data[t,k] - col_mean[k]
+                            end
                             prod += i_term * j_term * k_term
                         end
-                        face[j,k] = prod / (num_samples - bias)
+                        @inbounds face[j,k] = prod / (num_samples - bias)
                     end
                 end
                 tensor = (i == 1) ? face : [tensor face]
@@ -128,17 +121,17 @@ function coskew{T<:Real}(data::Matrix{T};
             # deviation of its fiber (along the active dimension)
             if standardize
                 @simd for i = 1:num_signals
-                    @inbounds i_std = _stddev(data[:,i], i_mean[i], bias)
+                    @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
                     @simd for j = 1:num_signals
-                        @inbounds j_std = _stddev(data[:,j], j_mean[j], bias)
+                        @inbounds j_std = _stddev(data[:,j], col_mean[j], bias)
                         @simd for k = 1:num_signals
-                            @inbounds k_std = _stddev(data[:,k], k_mean[k], bias)
+                            @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
                             prod = 0
                             @simd for t = 1:num_samples 
                                 @inbounds begin
-                                    i_term = (data[t,i] - i_mean[i]) / i_std
-                                    j_term = (data[t,j] - j_mean[j]) / j_std 
-                                    k_term = (data[t,k] - k_mean[k]) / k_std
+                                    i_term = (data[t,i] - col_mean[i]) / i_std
+                                    j_term = (data[t,j] - col_mean[j]) / j_std 
+                                    k_term = (data[t,k] - col_mean[k]) / k_std
                                 end
                                 prod += i_term * j_term * k_term
                             end
@@ -155,9 +148,9 @@ function coskew{T<:Real}(data::Matrix{T};
                             prod = 0
                             @simd for t = 1:num_samples
                                 @inbounds begin
-                                    i_term = data[t,i] - i_mean[i]
-                                    j_term = data[t,j] - j_mean[j]
-                                    k_term = data[t,k] - k_mean[k]
+                                    i_term = data[t,i] - col_mean[i]
+                                    j_term = data[t,j] - col_mean[j]
+                                    k_term = data[t,k] - col_mean[k]
                                 end
                                 prod += i_term * j_term * k_term
                             end
@@ -175,17 +168,17 @@ function coskew{T<:Real}(data::Matrix{T};
             # deviation of its fiber (along the active dimension)
             if standardize
                 @simd for i = 1:num_signals
-                    @inbounds i_std = _stddev(data[:,i], i_mean[i], bias)
+                    @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
                     @simd for j = 1:i
-                        @inbounds j_std = _stddev(data[:,j], j_mean[j], bias)
+                        @inbounds j_std = _stddev(data[:,j], col_mean[j], bias)
                         @simd for k = 1:j
-                            @inbounds k_std = _stddev(data[:,k], k_mean[k], bias)
+                            @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
                             prod = 0
                             @simd for t = 1:num_samples
                                 @inbounds begin
-                                    i_term = (data[t,i] - i_mean[i]) / i_std
-                                    j_term = (data[t,j] - j_mean[j]) / j_std 
-                                    k_term = (data[t,k] - k_mean[k]) / k_std
+                                    i_term = (data[t,i] - col_mean[i]) / i_std
+                                    j_term = (data[t,j] - col_mean[j]) / j_std 
+                                    k_term = (data[t,k] - col_mean[k]) / k_std
                                 end
                                 prod += i_term * j_term * k_term
                             end
@@ -202,9 +195,9 @@ function coskew{T<:Real}(data::Matrix{T};
                             prod = 0
                             @simd for t = 1:num_samples
                                 @inbounds begin
-                                    i_term = data[t,i] - i_mean[i]
-                                    j_term = data[t,j] - j_mean[j]
-                                    k_term = data[t,k] - k_mean[k]
+                                    i_term = data[t,i] - col_mean[i]
+                                    j_term = data[t,j] - col_mean[j]
+                                    k_term = data[t,k] - col_mean[k]
                                 end
                                 prod += i_term * j_term * k_term
                             end
@@ -225,37 +218,32 @@ function cokurt{T<:Real}(data::Matrix{T};
                          bias::Int=0,
                          dense::Bool=true)
     num_samples, num_signals = size(data)
-
-    # Averages along each dimension
-    @inbounds begin
-        i_mean = mean(data, 1)
-        j_mean = mean(data, 2)
-        k_mean = mean(data, 3)
-        l_mean = mean(data, 4)
-    end
+    @inbounds col_mean = mean(data, 1)
 
     # Flattened representation (i.e., unfolded into a matrix)
     if flatten
         tensor = []
         if standardize
             @inbounds for i = 1:num_signals
-                i_std = _stddev(data[:,i], i_mean[i], bias)
+                i_std = _stddev(data[:,i], col_mean[i], bias)
                 @inbounds for j = 1:num_signals
-                    j_std = _stddev(data[:,j], j_mean[j], bias)
+                    j_std = _stddev(data[:,j], col_mean[j], bias)
                     face = zeros(num_signals, num_signals)
-                    @inbounds for k = 1:num_signals
-                        k_std = _stddev(data[:,k], k_mean[k], bias)
-                        @inbounds for l = 1:num_signals
-                            l_std = _stddev(data[:,l], l_mean[l], bias)
+                    @simd for k = 1:num_signals
+                        k_std = _stddev(data[:,k], col_mean[k], bias)
+                        @simd for l = 1:num_signals
+                            l_std = _stddev(data[:,l], col_mean[l], bias)
                             prod = 0
-                            @inbounds for t = 1:num_samples 
-                                i_term = (data[t,i] - i_mean[i]) / i_std
-                                j_term = (data[t,j] - j_mean[j]) / j_std 
-                                k_term = (data[t,k] - k_mean[k]) / k_std
-                                l_term = (data[t,l] - l_mean[l]) / l_std
+                            @simd for t = 1:num_samples
+                                @inbounds begin
+                                    i_term = (data[t,i] - col_mean[i]) / i_std
+                                    j_term = (data[t,j] - col_mean[j]) / j_std 
+                                    k_term = (data[t,k] - col_mean[k]) / k_std
+                                    l_term = (data[t,l] - col_mean[l]) / l_std
+                                end
                                 prod += i_term * j_term * k_term * l_term
                             end
-                            face[k,l] = prod / (num_samples - bias)
+                            @inbounds face[k,l] = prod / (num_samples - bias)
                         end
                     end
                     tensor = (i == j == 1) ? face : [tensor face]
@@ -265,17 +253,19 @@ function cokurt{T<:Real}(data::Matrix{T};
             @inbounds for i = 1:num_signals
                 @inbounds for j = 1:num_signals
                     face = zeros(num_signals, num_signals)
-                    @inbounds for k = 1:num_signals
-                        @inbounds for l = 1:num_signals
+                    @simd for k = 1:num_signals
+                        @simd for l = 1:num_signals
                             prod = 0
-                            @inbounds for t = 1:num_samples
-                                i_term = data[t,i] - i_mean[i]
-                                j_term = data[t,j] - j_mean[j]
-                                k_term = data[t,k] - k_mean[k]
-                                l_term = data[t,l] - l_mean[l]
+                            @simd for t = 1:num_samples
+                                @inbounds begin
+                                    i_term = data[t,i] - col_mean[i]
+                                    j_term = data[t,j] - col_mean[j]
+                                    k_term = data[t,k] - col_mean[k]
+                                    l_term = data[t,l] - col_mean[l]
+                                end
                                 prod += i_term * j_term * k_term * l_term
                             end
-                            face[k,l] = prod / (num_samples - bias)
+                            @inbounds face[k,l] = prod / (num_samples - bias)
                         end
                     end
                     tensor = (i == j == 1) ? face : [tensor face]
@@ -294,20 +284,20 @@ function cokurt{T<:Real}(data::Matrix{T};
             # deviation of its fiber (along the active dimension)
             if standardize
                 @simd for i = 1:num_signals
-                    @inbounds i_std = _stddev(data[:,i], i_mean[i], bias)
+                    @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
                     @simd for j = 1:num_signals
-                        @inbounds j_std = _stddev(data[:,j], j_mean[j], bias)
+                        @inbounds j_std = _stddev(data[:,j], col_mean[j], bias)
                         @simd for k = 1:num_signals
-                            @inbounds k_std = _stddev(data[:,k], k_mean[k], bias)
+                            @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
                             @simd for l = 1:num_signals
-                                @inbounds l_std = _stddev(data[:,l], l_mean[l], bias)
+                                @inbounds l_std = _stddev(data[:,l], col_mean[l], bias)
                                 prod = 0
                                 @simd for t = 1:num_samples
                                     @inbounds begin
-                                        i_term = (data[t,i] - i_mean[i]) / i_std
-                                        j_term = (data[t,j] - j_mean[j]) / j_std 
-                                        k_term = (data[t,k] - k_mean[k]) / k_std
-                                        l_term = (data[t,l] - l_mean[l]) / l_std
+                                        i_term = (data[t,i] - col_mean[i]) / i_std
+                                        j_term = (data[t,j] - col_mean[j]) / j_std 
+                                        k_term = (data[t,k] - col_mean[k]) / k_std
+                                        l_term = (data[t,l] - col_mean[l]) / l_std
                                     end
                                     prod += i_term * j_term * k_term * l_term
                                 end
@@ -326,10 +316,10 @@ function cokurt{T<:Real}(data::Matrix{T};
                                 prod = 0
                                 @simd for t = 1:num_samples
                                     @inbounds begin
-                                        i_term = data[t,i] - i_mean[i]
-                                        j_term = data[t,j] - j_mean[j]
-                                        k_term = data[t,k] - k_mean[k]
-                                        l_term = data[t,l] - l_mean[l]
+                                        i_term = data[t,i] - col_mean[i]
+                                        j_term = data[t,j] - col_mean[j]
+                                        k_term = data[t,k] - col_mean[k]
+                                        l_term = data[t,l] - col_mean[l]
                                     end
                                     prod += i_term * j_term * k_term * l_term
                                 end
@@ -346,20 +336,20 @@ function cokurt{T<:Real}(data::Matrix{T};
             # deviation of its fiber (along the active dimension)
             if standardize
                 @simd for i = 1:num_signals
-                    @inbounds i_std = _stddev(data[:,i], i_mean[i], bias)
+                    @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
                     @simd for j = 1:i
-                        @inbounds j_std = _stddev(data[:,j], j_mean[j], bias)
+                        @inbounds j_std = _stddev(data[:,j], col_mean[j], bias)
                         @simd for k = 1:j
-                            @inbounds k_std = _stddev(data[:,k], k_mean[k], bias)
+                            @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
                             @simd for l = 1:k
                                 @inbounds l_std = _stddev(data[:,l], l_mean[l], bias)
                                 prod = 0
                                 @simd for t = 1:num_samples
                                     @inbounds begin
-                                        i_term = (data[t,i] - i_mean[i]) / i_std
-                                        j_term = (data[t,j] - j_mean[j]) / j_std 
-                                        k_term = (data[t,k] - k_mean[k]) / k_std
-                                        l_term = (data[t,l] - l_mean[l]) / l_std
+                                        i_term = (data[t,i] - col_mean[i]) / i_std
+                                        j_term = (data[t,j] - col_mean[j]) / j_std 
+                                        k_term = (data[t,k] - col_mean[k]) / k_std
+                                        l_term = (data[t,l] - col_mean[l]) / l_std
                                     end
                                     prod += i_term * j_term * k_term * l_term
                                 end
@@ -378,10 +368,10 @@ function cokurt{T<:Real}(data::Matrix{T};
                                 prod = 0
                                 @simd for t = 1:num_samples
                                     @inbounds begin
-                                        i_term = data[t,i] - i_mean[i]
-                                        j_term = data[t,j] - j_mean[j]
-                                        k_term = data[t,k] - k_mean[k]
-                                        l_term = data[t,l] - l_mean[l]
+                                        i_term = data[t,i] - col_mean[i]
+                                        j_term = data[t,j] - col_mean[j]
+                                        k_term = data[t,k] - col_mean[k]
+                                        l_term = data[t,l] - col_mean[l]
                                     end
                                     prod += i_term * j_term * k_term * l_term
                                 end

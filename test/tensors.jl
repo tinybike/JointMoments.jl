@@ -9,6 +9,9 @@ expected_cokurt = [ 2.126762   1.118844   0.474779   1.118844   1.122935   0.187
 expected_coskew_tensor = reshape(expected_coskew, 3, 3, 3)
 expected_cokurt_tensor = reshape(expected_cokurt, 3, 3, 3, 3)
 
+@test_approx_eq_eps _covar(data, bias=1) cov(data, corrected=true) ε
+@test_approx_eq_eps _covar(data, bias=0) cov(data, corrected=false) ε
+
 @test_approx_eq_eps coskew(data, flatten=true) expected_coskew ε
 @test_approx_eq_eps coskew(data) expected_coskew_tensor ε
 
