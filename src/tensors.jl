@@ -1,38 +1,22 @@
-# Standard deviation of a vector (adjustable bias)
-function _std{T<:Real}(data::Vector{T}, avg::Real, n::Int, bias::Int)
-    if bias == 0
-        s = 0.0
-        for i = 1:n
-            @inbounds z = data[i] - avg
-            s += z * z
-        end
-        sqrt(s / n)
-    elseif bias == 1
-        std(data)
+# Standard deviation of a vector without Bessel's correction
+function _std{T<:Real}(data::Vector{T}, avg::Real, n::Int)
+    s = 0.0
+    for i = 1:n
+        @inbounds z = data[i] - avg
+        s += z * z
     end
+    sqrt(s / n)
 end
 
-# Per-column standard deviation of a matrix (adjustable bias)
-function _std{T<:Real}(data::Matrix{T}, avg::Vector{T}, rows::Int, cols::Int, bias::Int)
-    if bias == 0
-        stds = (Real)[]
-        for j = 1:cols
-            push!(stds, _std(data[:,j], avg[j], rows, bias))
-        end
-        stds
-    elseif bias == 1
-        vec(std(data, 1))
-    end
-end
+# Per-column standard deviation of a matrix without Bessel's correction
+_std{T<:Real}(data::Matrix{T}, avg::Vector{T}, rows::Int, cols::Int) = 
+    vec([_std(data[:,j], avg[j], rows) for j in 1:cols])
 
 # Covariance matrix (for testing)
 function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     num_samples, num_signals = size(data)
     adj = num_samples - bias
-    @inbounds begin
-        avgs = vec(mean(data, 1))
-        cntr = data .- avgs'
-    end
+    @inbounds cntr = data .- mean(data, 1)
     tensor = zeros(num_signals, num_signals)
 
     # Dense matrix (all values are calculated, including duplicates)
@@ -53,7 +37,7 @@ function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
             end
         end
     end
-    return tensor
+    tensor
 end
 
 # Coskewness tensor (third-order)
@@ -70,7 +54,11 @@ function coskew{T<:Real}(data::Matrix{T};
 
         # Standardized moments: divide by the per-signal standard deviation
         if standardize
-            cntr ./= _std(data, avgs, num_samples, num_signals, bias)'
+            if bias == 1
+                cntr ./= vec(std(data, 1))'
+            else
+                cntr ./= _std(data, avgs, num_samples, num_signals)'
+            end
         end
     end
 
@@ -112,7 +100,7 @@ function coskew{T<:Real}(data::Matrix{T};
             end
         end
     end
-    return tensor
+    tensor
 end
 
 # Cokurtosis tensor (fourth-order)
@@ -129,7 +117,11 @@ function cokurt{T<:Real}(data::Matrix{T};
 
         # Standardized moments: divide by the per-signal standard deviation
         if standardize
-            cntr ./= _std(data, avgs, num_samples, num_signals, bias)'
+            if bias == 1
+                cntr ./= vec(std(data, 1))'
+            else
+                cntr ./= _std(data, avgs, num_samples, num_signals)'
+            end
         end
     end
 
@@ -177,5 +169,5 @@ function cokurt{T<:Real}(data::Matrix{T};
             end
         end
     end
-    return tensor
+    tensor
 end
