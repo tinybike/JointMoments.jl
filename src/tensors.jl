@@ -1,3 +1,5 @@
+using Debug
+
 function _stddev{T<:Real}(v::Array{T,1}, avg::Real, bias::Int)
     if bias == 0
         n = length(v)
@@ -9,6 +11,20 @@ function _stddev{T<:Real}(v::Array{T,1}, avg::Real, bias::Int)
         sqrt(s / n)
     elseif bias == 1
         std(v)
+    end
+end
+
+function _stddev{T<:Real}(data::Matrix{T}, avg::Vector{T}, bias::Int)
+    if bias == 0
+        n = length(data)
+        s = 0.0
+        for i = 1:n
+            @inbounds z = data[i] - avg
+            s += z * z
+        end
+        sqrt(s / n)
+    elseif bias == 1
+        std(data)
     end
 end
 
@@ -56,7 +72,7 @@ function _covar{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
 end
 
 # Coskewness tensor (third-order)
-function coskew{T<:Real}(data::Matrix{T};
+function coskew{T<:Real}(data::Array{T,2};
                          standardize::Bool=false,
                          flatten::Bool=false,
                          bias::Int=0,
@@ -118,7 +134,7 @@ function coskew{T<:Real}(data::Matrix{T};
             tensor = zeros(num_signals, num_signals, num_signals)
 
             # Standardized moments: divide each element by the standard
-            # deviation of its fiber (along the active dimension)
+            # deviation of its fiber
             if standardize
                 @simd for i = 1:num_signals
                     @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
@@ -165,7 +181,7 @@ function coskew{T<:Real}(data::Matrix{T};
             tensor = zeros(num_signals, num_signals, num_signals)
 
             # Standardized moments: divide each element by the standard
-            # deviation of its fiber (along the active dimension)
+            # deviation of its fiber
             if standardize
                 @simd for i = 1:num_signals
                     @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
@@ -277,12 +293,13 @@ function cokurt{T<:Real}(data::Matrix{T};
     else
         tensor = zeros(num_signals, num_signals, num_signals, num_signals)
 
-        # Dense representation: all values are calculated, including duplicates
+        # Dense: all values are calculated, including duplicates
         if dense
 
             # Standardized moments: divide each element by the standard
-            # deviation of its fiber (along the active dimension)
+            # deviation of its fiber
             if standardize
+                # col_std = _stddev(data, col_mean, bias)
                 @simd for i = 1:num_signals
                     @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
                     @simd for j = 1:num_signals
@@ -330,10 +347,10 @@ function cokurt{T<:Real}(data::Matrix{T};
                 end
             end
 
-        # Triangular representation: duplicate values ignored        
+        # Triangular: duplicate values ignored        
         else
             # Standardized moments: divide each element by the standard
-            # deviation of its fiber (along the active dimension)
+            # deviation of its fiber
             if standardize
                 @simd for i = 1:num_signals
                     @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
@@ -342,7 +359,7 @@ function cokurt{T<:Real}(data::Matrix{T};
                         @simd for k = 1:j
                             @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
                             @simd for l = 1:k
-                                @inbounds l_std = _stddev(data[:,l], l_mean[l], bias)
+                                @inbounds l_std = _stddev(data[:,l], col_mean[l], bias)
                                 prod = 0
                                 @simd for t = 1:num_samples
                                     @inbounds begin
