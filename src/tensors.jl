@@ -1,16 +1,3 @@
-# Standard deviation of a centered vector (adjustable bias)
-function _std{T<:Real}(data::Vector{T}, n::Int, bias::Int)
-    if bias == 0
-        s = 0.0
-        for i = 1:n
-            @inbounds s += data[i]^2
-        end
-        sqrt(s / n)
-    elseif bias == 1
-        std(data)
-    end
-end
-
 # Standard deviation of a vector (adjustable bias)
 function _std{T<:Real}(data::Vector{T}, avg::Real, n::Int, bias::Int)
     if bias == 0
@@ -22,19 +9,6 @@ function _std{T<:Real}(data::Vector{T}, avg::Real, n::Int, bias::Int)
         sqrt(s / n)
     elseif bias == 1
         std(data)
-    end
-end
-
-# Per-column standard deviation of a centered matrix (adjustable bias)
-function _std{T<:Real}(data::Matrix{T}, rows::Int, cols::Int, bias::Int)
-    if bias == 0
-        stds = (Real)[]
-        for j = 1:cols
-            push!(stds, _std(data[:,j], rows, bias))
-        end
-        stds
-    elseif bias == 1
-        vec(std(data, 1))
     end
 end
 
