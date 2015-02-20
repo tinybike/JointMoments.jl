@@ -128,3 +128,7 @@ Unit tests can be run from the command line:
 Or from the Julia prompt:
 
     julia> Pkg.test("JointMoments")
+
+This package includes a rudimentary timing framework in `test/timing.jl`.  To run the timed examples:
+
+    $ julia --color test/timing.jl

@@ -1,22 +1,19 @@
-using Debug
-
-function _stddev{T<:Real}(v::Array{T,1}, avg::Real, bias::Int)
+# Standard deviation of a centered vector (adjustable bias)
+function _std{T<:Real}(data::Vector{T}, n::Int, bias::Int)
     if bias == 0
-        n = length(v)
         s = 0.0
         for i = 1:n
-            @inbounds z = v[i] - avg
-            s += z * z
+            @inbounds s += data[i]^2
         end
         sqrt(s / n)
     elseif bias == 1
-        std(v)
+        std(data)
     end
 end
 
-function _stddev{T<:Real}(data::Matrix{T}, avg::Vector{T}, bias::Int)
+# Standard deviation of a vector (adjustable bias)
+function _std{T<:Real}(data::Vector{T}, avg::Real, n::Int, bias::Int)
     if bias == 0
-        n = length(data)
         s = 0.0
         for i = 1:n
             @inbounds z = data[i] - avg
@@ -28,25 +25,47 @@ function _stddev{T<:Real}(data::Matrix{T}, avg::Vector{T}, bias::Int)
     end
 end
 
+# Per-column standard deviation of a centered matrix (adjustable bias)
+function _std{T<:Real}(data::Matrix{T}, rows::Int, cols::Int, bias::Int)
+    if bias == 0
+        stds = (Real)[]
+        for j = 1:cols
+            push!(stds, _std(data[:,j], rows, bias))
+        end
+        stds
+    elseif bias == 1
+        vec(std(data, 1))
+    end
+end
+
+# Per-column standard deviation of a matrix (adjustable bias)
+function _std{T<:Real}(data::Matrix{T}, avg::Vector{T}, rows::Int, cols::Int, bias::Int)
+    if bias == 0
+        stds = (Real)[]
+        for j = 1:cols
+            push!(stds, _std(data[:,j], avg[j], rows, bias))
+        end
+        stds
+    elseif bias == 1
+        vec(std(data, 1))
+    end
+end
+
 # Covariance matrix (for testing)
-function _covar{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
+function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     num_samples, num_signals = size(data)
+    adj = num_samples - bias
+    @inbounds begin
+        avgs = vec(mean(data, 1))
+        cntr = data .- avgs'
+    end
     tensor = zeros(num_signals, num_signals)
-    @inbounds col_mean = mean(data, 1)
 
     # Dense matrix (all values are calculated, including duplicates)
     if dense
         @simd for i = 1:num_signals
             @simd for j = 1:num_signals
-                prod = 0
-                @simd for t = 1:num_samples
-                    @inbounds begin
-                        i_term = data[t,i] - col_mean[i]
-                        j_term = data[t,j] - col_mean[j]
-                    end
-                    prod +=  i_term * j_term
-                end
-                @inbounds tensor[i,j] = prod / (num_samples - bias)
+                @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j]) / adj
             end
         end
 
@@ -56,15 +75,7 @@ function _covar{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     else
         @simd for i = 1:num_signals
             @simd for j = 1:i
-                prod = 0
-                @simd for t = 1:num_samples 
-                    @inbounds begin
-                        i_term = data[t,i] - col_mean[i]
-                        j_term = data[t,j] - col_mean[j]
-                    end
-                    prod +=  i_term * j_term
-                end
-                @inbounds tensor[i,j] = prod / (num_samples - bias)
+                @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j]) / adj
             end
         end
     end
@@ -72,153 +83,56 @@ function _covar{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
 end
 
 # Coskewness tensor (third-order)
-function coskew{T<:Real}(data::Array{T,2};
+function coskew{T<:Real}(data::Matrix{T};
                          standardize::Bool=false,
                          flatten::Bool=false,
                          bias::Int=0,
                          dense::Bool=true)
     num_samples, num_signals = size(data)
-    @inbounds col_mean = mean(data, 1)
+    adj = num_samples - bias
+    @inbounds begin
+        avgs = vec(mean(data, 1))
+        cntr = data .- avgs'
 
-    # Flattened representation (i.e., unfolded into a matrix)
-    if flatten
-        tensor = []
+        # Standardized moments: divide by the per-signal standard deviation
         if standardize
-            @inbounds for i = 1:num_signals
-                i_std = _stddev(data[:,i], col_mean[i], bias)
-                face = zeros(num_signals, num_signals)
-                @simd for j = 1:num_signals
-                    j_std = _stddev(data[:,j], col_mean[j], bias)
-                    @simd for k = 1:num_signals
-                        k_std = _stddev(data[:,k], col_mean[k], bias)
-                        prod = 0
-                        @simd for t = 1:num_samples 
-                            @inbounds begin
-                                i_term = (data[t,i] - col_mean[i]) / i_std
-                                j_term = (data[t,j] - col_mean[j]) / j_std 
-                                k_term = (data[t,k] - col_mean[k]) / k_std
-                            end
-                            prod += i_term * j_term * k_term
-                        end
-                        @inbounds face[j,k] = prod / (num_samples - bias)
-                    end
+            cntr ./= _std(data, avgs, num_samples, num_signals, bias)'
+        end
+    end
+
+    # Flattened representation (i.e., unfolded to a matrix)
+    if flatten
+        tensor = (Real)[]
+        @inbounds for i = 1:num_signals
+            face = zeros(num_signals, num_signals)
+            @simd for j = 1:num_signals
+                @simd for k = 1:num_signals
+                    @inbounds face[j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
                 end
-                tensor = (i == 1) ? face : [tensor face]
             end
-        else
-            @inbounds for i = 1:num_signals
-                face = zeros(num_signals, num_signals)
-                @simd for j = 1:num_signals
-                    @simd for k = 1:num_signals
-                        prod = 0
-                        @simd for t = 1:num_samples
-                            @inbounds begin
-                                i_term = data[t,i] - col_mean[i]
-                                j_term = data[t,j] - col_mean[j]
-                                k_term = data[t,k] - col_mean[k]
-                            end
-                            prod += i_term * j_term * k_term
-                        end
-                        @inbounds face[j,k] = prod / (num_samples - bias)
-                    end
-                end
-                tensor = (i == 1) ? face : [tensor face]
-            end
+            @inbounds tensor = (i == 1) ? face : [tensor face]
         end
 
     # Cube: third-order tensor representation
     else
+        tensor = zeros(num_signals, num_signals, num_signals)
 
-        # Dense representation: all values are calculated, including duplicates
+        # Dense: all values are calculated, including duplicates
         if dense
-            tensor = zeros(num_signals, num_signals, num_signals)
-
-            # Standardized moments: divide each element by the standard
-            # deviation of its fiber
-            if standardize
-                @simd for i = 1:num_signals
-                    @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
-                    @simd for j = 1:num_signals
-                        @inbounds j_std = _stddev(data[:,j], col_mean[j], bias)
-                        @simd for k = 1:num_signals
-                            @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
-                            prod = 0
-                            @simd for t = 1:num_samples 
-                                @inbounds begin
-                                    i_term = (data[t,i] - col_mean[i]) / i_std
-                                    j_term = (data[t,j] - col_mean[j]) / j_std 
-                                    k_term = (data[t,k] - col_mean[k]) / k_std
-                                end
-                                prod += i_term * j_term * k_term
-                            end
-                            @inbounds tensor[i,j,k] = prod / (num_samples - bias)
-                        end
-                    end
-                end
-
-            # Unstandardized (raw) moments
-            else
-                @simd for i = 1:num_signals
-                    @simd for j = 1:num_signals
-                        @simd for k = 1:num_signals
-                            prod = 0
-                            @simd for t = 1:num_samples
-                                @inbounds begin
-                                    i_term = data[t,i] - col_mean[i]
-                                    j_term = data[t,j] - col_mean[j]
-                                    k_term = data[t,k] - col_mean[k]
-                                end
-                                prod += i_term * j_term * k_term
-                            end
-                            @inbounds tensor[i,j,k] = prod / (num_samples - bias)
-                        end
+            @simd for i = 1:num_signals
+                @simd for j = 1:num_signals
+                    @simd for k = 1:num_signals
+                        @inbounds tensor[i,j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
                     end
                 end
             end
 
-        # Triangular representation: duplicate values ignored
+        # Triangular: duplicate values ignored
         else
-            tensor = zeros(num_signals, num_signals, num_signals)
-
-            # Standardized moments: divide each element by the standard
-            # deviation of its fiber
-            if standardize
-                @simd for i = 1:num_signals
-                    @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
-                    @simd for j = 1:i
-                        @inbounds j_std = _stddev(data[:,j], col_mean[j], bias)
-                        @simd for k = 1:j
-                            @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
-                            prod = 0
-                            @simd for t = 1:num_samples
-                                @inbounds begin
-                                    i_term = (data[t,i] - col_mean[i]) / i_std
-                                    j_term = (data[t,j] - col_mean[j]) / j_std 
-                                    k_term = (data[t,k] - col_mean[k]) / k_std
-                                end
-                                prod += i_term * j_term * k_term
-                            end
-                            @inbounds tensor[i,j,k] = prod / (num_samples - bias)
-                        end
-                    end
-                end
-
-            # Unstandardized (raw) moments
-            else
-                @simd for i = 1:num_signals
-                    @simd for j = 1:i
-                        @simd for k = 1:j
-                            prod = 0
-                            @simd for t = 1:num_samples
-                                @inbounds begin
-                                    i_term = data[t,i] - col_mean[i]
-                                    j_term = data[t,j] - col_mean[j]
-                                    k_term = data[t,k] - col_mean[k]
-                                end
-                                prod += i_term * j_term * k_term
-                            end
-                            @inbounds tensor[i,j,k] = prod / (num_samples - bias)
-                        end
+            @simd for i = 1:num_signals
+                @simd for j = 1:i
+                    @simd for k = 1:j
+                        @inbounds tensor[i,j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
                     end
                 end
             end
@@ -234,58 +148,29 @@ function cokurt{T<:Real}(data::Matrix{T};
                          bias::Int=0,
                          dense::Bool=true)
     num_samples, num_signals = size(data)
-    @inbounds col_mean = mean(data, 1)
+    adj = num_samples - bias
+    @inbounds begin
+        avgs = vec(mean(data, 1))
+        cntr = data .- avgs'
+
+        # Standardized moments: divide by the per-signal standard deviation
+        if standardize
+            cntr ./= _std(data, avgs, num_samples, num_signals, bias)'
+        end
+    end
 
     # Flattened representation (i.e., unfolded into a matrix)
     if flatten
-        tensor = []
-        if standardize
-            @inbounds for i = 1:num_signals
-                i_std = _stddev(data[:,i], col_mean[i], bias)
-                @inbounds for j = 1:num_signals
-                    j_std = _stddev(data[:,j], col_mean[j], bias)
-                    face = zeros(num_signals, num_signals)
-                    @simd for k = 1:num_signals
-                        k_std = _stddev(data[:,k], col_mean[k], bias)
-                        @simd for l = 1:num_signals
-                            l_std = _stddev(data[:,l], col_mean[l], bias)
-                            prod = 0
-                            @simd for t = 1:num_samples
-                                @inbounds begin
-                                    i_term = (data[t,i] - col_mean[i]) / i_std
-                                    j_term = (data[t,j] - col_mean[j]) / j_std 
-                                    k_term = (data[t,k] - col_mean[k]) / k_std
-                                    l_term = (data[t,l] - col_mean[l]) / l_std
-                                end
-                                prod += i_term * j_term * k_term * l_term
-                            end
-                            @inbounds face[k,l] = prod / (num_samples - bias)
-                        end
+        tensor = (Real)[]
+        @inbounds for i = 1:num_signals
+            @inbounds for j = 1:num_signals
+                face = zeros(num_signals, num_signals)
+                @simd for k = 1:num_signals
+                    @simd for l = 1:num_signals
+                        @inbounds face[k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
                     end
-                    tensor = (i == j == 1) ? face : [tensor face]
                 end
-            end
-        else
-            @inbounds for i = 1:num_signals
-                @inbounds for j = 1:num_signals
-                    face = zeros(num_signals, num_signals)
-                    @simd for k = 1:num_signals
-                        @simd for l = 1:num_signals
-                            prod = 0
-                            @simd for t = 1:num_samples
-                                @inbounds begin
-                                    i_term = data[t,i] - col_mean[i]
-                                    j_term = data[t,j] - col_mean[j]
-                                    k_term = data[t,k] - col_mean[k]
-                                    l_term = data[t,l] - col_mean[l]
-                                end
-                                prod += i_term * j_term * k_term * l_term
-                            end
-                            @inbounds face[k,l] = prod / (num_samples - bias)
-                        end
-                    end
-                    tensor = (i == j == 1) ? face : [tensor face]
-                end
+                @inbounds tensor = (i == j == 1) ? face : [tensor face]
             end
         end
 
@@ -295,53 +180,11 @@ function cokurt{T<:Real}(data::Matrix{T};
 
         # Dense: all values are calculated, including duplicates
         if dense
-
-            # Standardized moments: divide each element by the standard
-            # deviation of its fiber
-            if standardize
-                # col_std = _stddev(data, col_mean, bias)
-                @simd for i = 1:num_signals
-                    @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
-                    @simd for j = 1:num_signals
-                        @inbounds j_std = _stddev(data[:,j], col_mean[j], bias)
-                        @simd for k = 1:num_signals
-                            @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
-                            @simd for l = 1:num_signals
-                                @inbounds l_std = _stddev(data[:,l], col_mean[l], bias)
-                                prod = 0
-                                @simd for t = 1:num_samples
-                                    @inbounds begin
-                                        i_term = (data[t,i] - col_mean[i]) / i_std
-                                        j_term = (data[t,j] - col_mean[j]) / j_std 
-                                        k_term = (data[t,k] - col_mean[k]) / k_std
-                                        l_term = (data[t,l] - col_mean[l]) / l_std
-                                    end
-                                    prod += i_term * j_term * k_term * l_term
-                                end
-                                @inbounds tensor[i,j,k,l] = prod / (num_samples - bias)
-                            end
-                        end
-                    end
-                end
-
-            # Unstandardized (raw) moments
-            else
-                @simd for i = 1:num_signals
-                    @simd for j = 1:num_signals
-                        @simd for k = 1:num_signals
-                            @simd for l = 1:num_signals
-                                prod = 0
-                                @simd for t = 1:num_samples
-                                    @inbounds begin
-                                        i_term = data[t,i] - col_mean[i]
-                                        j_term = data[t,j] - col_mean[j]
-                                        k_term = data[t,k] - col_mean[k]
-                                        l_term = data[t,l] - col_mean[l]
-                                    end
-                                    prod += i_term * j_term * k_term * l_term
-                                end
-                                @inbounds tensor[i,j,k,l] = prod / (num_samples - bias)
-                            end
+            @simd for i = 1:num_signals
+                @simd for j = 1:num_signals
+                    @simd for k = 1:num_signals
+                        @simd for l = 1:num_signals
+                            @inbounds tensor[i,j,k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
                         end
                     end
                 end
@@ -349,51 +192,11 @@ function cokurt{T<:Real}(data::Matrix{T};
 
         # Triangular: duplicate values ignored        
         else
-            # Standardized moments: divide each element by the standard
-            # deviation of its fiber
-            if standardize
-                @simd for i = 1:num_signals
-                    @inbounds i_std = _stddev(data[:,i], col_mean[i], bias)
-                    @simd for j = 1:i
-                        @inbounds j_std = _stddev(data[:,j], col_mean[j], bias)
-                        @simd for k = 1:j
-                            @inbounds k_std = _stddev(data[:,k], col_mean[k], bias)
-                            @simd for l = 1:k
-                                @inbounds l_std = _stddev(data[:,l], col_mean[l], bias)
-                                prod = 0
-                                @simd for t = 1:num_samples
-                                    @inbounds begin
-                                        i_term = (data[t,i] - col_mean[i]) / i_std
-                                        j_term = (data[t,j] - col_mean[j]) / j_std 
-                                        k_term = (data[t,k] - col_mean[k]) / k_std
-                                        l_term = (data[t,l] - col_mean[l]) / l_std
-                                    end
-                                    prod += i_term * j_term * k_term * l_term
-                                end
-                                @inbounds tensor[i,j,k,l] = prod / (num_samples - bias)
-                            end
-                        end
-                    end
-                end
-
-            # Unstandardized (raw) moments
-            else
-                @simd for i = 1:num_signals
-                    @simd for j = 1:i
-                        @simd for k = 1:j
-                            @simd for l = 1:k
-                                prod = 0
-                                @simd for t = 1:num_samples
-                                    @inbounds begin
-                                        i_term = data[t,i] - col_mean[i]
-                                        j_term = data[t,j] - col_mean[j]
-                                        k_term = data[t,k] - col_mean[k]
-                                        l_term = data[t,l] - col_mean[l]
-                                    end
-                                    prod += i_term * j_term * k_term * l_term
-                                end
-                                @inbounds tensor[i,j,k,l] = prod / (num_samples - bias)
-                            end
+            @simd for i = 1:num_signals
+                @simd for j = 1:i
+                    @simd for k = 1:j
+                        @simd for l = 1:k
+                            @inbounds tensor[i,j,k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
                         end
                     end
                 end

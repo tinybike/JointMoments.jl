@@ -3,10 +3,12 @@ using JointMoments
 
 include("data.jl")
 
+const ITERMAX = 50
+
 function timing()
-    time_covar = false
+    time_cov = true
     time_coskew = true
-    time_cokurt = false
+    time_cokurt = true
     # datasets = (data, bigdata)
     datasets = (bigdata,)
     for (idx, dataset) in enumerate(datasets)
@@ -15,20 +17,33 @@ function timing()
         label = string("Data: ", rows, "x", cols, " ", typeof(dataset), "\n")
         print_with_color(:white, label)
         for i = 1:2
-            row = Dict()
+            itermax = (i == 1) ? 1 : ITERMAX
+            row = {
+                :bias => 1,
+                :flatten => false,
+                :standardize => true,
+                :function => :_cov,
+                :elapsed => 0.0,
+                :elapsed_error => 0.0,
+            }
             params = [(true, true), (true, false), (false, true), (false, false)]
             for p in params
-                row[:bias] = 1
-                row[:flatten] = false
                 row[:dense] = p[1]
-                if time_covar
+                if time_cov
                     row[:standardize] = NaN
-                    row[:function] = :_covar
-                    row[:elapsed] = @elapsed _covar(
-                        dataset,
-                        dense=row[:dense],
-                        bias=1,
-                    )
+                    row[:function] = :_cov
+                    elapse = (Float64)[]
+                    for j = 1:itermax
+                        push!(elapse,
+                            @elapsed _cov(
+                                dataset,
+                                dense=row[:dense],
+                                bias=row[:bias],
+                            )
+                        )
+                    end
+                    row[:elapsed] = mean(elapse)
+                    row[:elapsed_error] = std(elapse)
                     if i == 2
                         if size(df) == (0,0)
                             for (key, value) in row
@@ -43,13 +58,20 @@ function timing()
                     row[:dense] = p[1]
                     row[:standardize] = p[2]
                     row[:function] = :coskew
-                    row[:elapsed] = @elapsed coskew(
-                        dataset,
-                        standardize=row[:standardize],
-                        flatten=row[:flatten],
-                        bias=row[:bias],
-                        dense=row[:dense],
-                    )
+                    elapse = (Float64)[]
+                    for j = 1:itermax
+                        push!(elapse,
+                            @elapsed coskew(
+                                dataset,
+                                standardize=row[:standardize],
+                                flatten=row[:flatten],
+                                bias=row[:bias],
+                                dense=row[:dense],
+                            )
+                        )
+                    end
+                    row[:elapsed] = mean(elapse)
+                    row[:elapsed_error] = std(elapse)
                     if i == 2
                         if size(df) == (0,0)
                             for (key, value) in row
@@ -64,12 +86,20 @@ function timing()
                     row[:dense] = p[1]
                     row[:standardize] = p[2]
                     row[:function] = :cokurt
-                    row[:elapsed] = @elapsed cokurt(
-                        dataset,
-                        dense=row[:dense],
-                        standardize=row[:standardize],
-                        bias=1,
-                    )
+                    elapse = (Float64)[]
+                    for j = 1:itermax
+                        push!(elapse,
+                            @elapsed cokurt(
+                                dataset,
+                                standardize=row[:standardize],
+                                flatten=row[:flatten],
+                                bias=row[:bias],
+                                dense=row[:dense],
+                            )
+                        )
+                    end
+                    row[:elapsed] = mean(elapse)
+                    row[:elapsed_error] = std(elapse)
                     if i == 2
                         if size(df) == (0,0)
                             for (key, value) in row
