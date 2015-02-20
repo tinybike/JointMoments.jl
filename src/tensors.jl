@@ -55,7 +55,7 @@ function coskew{T<:Real}(data::Matrix{T};
         # Standardized moments: divide by the per-signal standard deviation
         if standardize
             if bias == 1
-                cntr ./= vec(std(data, 1))'
+                cntr ./= std(data, 1)
             else
                 cntr ./= _std(data, avgs, num_samples, num_signals)'
             end
@@ -118,7 +118,7 @@ function cokurt{T<:Real}(data::Matrix{T};
         # Standardized moments: divide by the per-signal standard deviation
         if standardize
             if bias == 1
-                cntr ./= vec(std(data, 1))'
+                cntr ./= std(data, 1)
             else
                 cntr ./= _std(data, avgs, num_samples, num_signals)'
             end
