@@ -1,17 +1,3 @@
-# Standard deviation of a vector without Bessel's correction
-function _std{T<:Real}(data::Vector{T}, avg::Real, n::Int)
-    s = 0.0
-    for i = 1:n
-        @inbounds z = data[i] - avg
-        s += z * z
-    end
-    sqrt(s / n)
-end
-
-# Per-column standard deviation of a matrix without Bessel's correction
-_std{T<:Real}(data::Matrix{T}, avg::Vector{T}, rows::Int, cols::Int) = 
-    vec([_std(data[:,j], avg[j], rows) for j in 1:cols])
-
 # Covariance matrix (for testing)
 function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     num_samples, num_signals = size(data)
