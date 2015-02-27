@@ -3,7 +3,7 @@ using JointMoments
 
 include("data.jl")
 
-const ITERMAX = 50
+const ITERMAX = 10
 
 function timing()
     time_cov = false

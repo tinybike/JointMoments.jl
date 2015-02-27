@@ -52,9 +52,10 @@ function coskew{T<:Real}(data::Matrix{T};
     # Flattened representation (i.e., unfolded to a matrix)
     if flatten
 
+        # Dense: all values are calculated, including duplicates
         if dense
             tensor = zeros(num_signals, num_signals^2)
-            @inbounds for i = 1:num_signals
+            @simd for i = 1:num_signals
                 @simd for j = 1:num_signals
                     @simd for k = 1:num_signals
                         @inbounds tensor[j,(i-1)*num_signals+k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
@@ -62,9 +63,10 @@ function coskew{T<:Real}(data::Matrix{T};
                 end
             end
 
+        # Triangular: duplicate values ignored
         else
             tensor = spzeros(num_signals, num_signals^2)
-            @inbounds for i = 1:num_signals
+            @simd for i = 1:num_signals
                 @simd for j = 1:i
                     @simd for k = 1:j
                         @inbounds tensor[j,(i-1)*num_signals+k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
@@ -126,10 +128,11 @@ function cokurt{T<:Real}(data::Matrix{T};
     # Flattened representation (i.e., unfolded into a matrix)
     if flatten
 
+        # Dense: all values are calculated, including duplicates
         if dense
             tensor = zeros(num_signals, num_signals^3)
-            @inbounds for i = 1:num_signals
-                @inbounds for j = 1:num_signals
+            @simd for i = 1:num_signals
+                @simd for j = 1:num_signals
                     @simd for k = 1:num_signals
                         @simd for l = 1:num_signals
                             @inbounds tensor[k,(i-1)*num_signals^2 + (j-1)*num_signals + l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
@@ -138,10 +141,12 @@ function cokurt{T<:Real}(data::Matrix{T};
                 end
             end
 
+        # Triangular: duplicate values ignored
         else
-            tensor = spzeros(num_signals, num_signals^3)
-            @inbounds for i = 1:num_signals
-                @inbounds for j = 1:i
+            tensor = zeros(num_signals, num_signals^3)
+            # tensor = spzeros(num_signals, num_signals^3)
+            @simd for i = 1:num_signals
+                @simd for j = 1:i
                     @simd for k = 1:j
                         @simd for l = 1:k
                             @inbounds tensor[k,(i-1)*num_signals^2 + (j-1)*num_signals + l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
@@ -167,7 +172,7 @@ function cokurt{T<:Real}(data::Matrix{T};
                 end
             end
 
-        # Triangular: duplicate values ignored        
+        # Triangular: duplicate values ignored
         else
             @simd for i = 1:num_signals
                 @simd for j = 1:i
