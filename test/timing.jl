@@ -6,8 +6,8 @@ include("data.jl")
 const ITERMAX = 50
 
 function timing()
-    time_cov = true
-    time_coskew = true
+    time_cov = false
+    time_coskew = false
     time_cokurt = true
     # datasets = (data, bigdata)
     datasets = (bigdata,)
@@ -26,11 +26,22 @@ function timing()
                 :elapsed => 0.0,
                 :elapsed_error => 0.0,
             }
-            params = [(true, true), (true, false), (false, true), (false, false)]
+            # parameters: dense, standardize, flatten
+            params = [
+                (true, true, true),
+                (true, true, false),
+                (true, false, true),
+                (false, true, true),
+                (true, false, false),
+                (false, true, false),
+                (false, false, true),
+                (false, false, false),
+            ]
             for p in params
                 row[:dense] = p[1]
                 if time_cov
                     row[:standardize] = NaN
+                    row[:flatten] = false
                     row[:function] = :_cov
                     elapse = (Float64)[]
                     for j = 1:itermax
@@ -57,6 +68,7 @@ function timing()
                 if time_coskew
                     row[:dense] = p[1]
                     row[:standardize] = p[2]
+                    row[:flatten] = p[3]
                     row[:function] = :coskew
                     elapse = (Float64)[]
                     for j = 1:itermax
@@ -85,6 +97,7 @@ function timing()
                 if time_cokurt
                     row[:dense] = p[1]
                     row[:standardize] = p[2]
+                    row[:flatten] = p[3]
                     row[:function] = :cokurt
                     elapse = (Float64)[]
                     for j = 1:itermax

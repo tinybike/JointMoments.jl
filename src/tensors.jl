@@ -3,10 +3,10 @@ function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     num_samples, num_signals = size(data)
     adj = num_samples - bias
     @inbounds cntr = data .- mean(data, 1)
-    tensor = zeros(num_signals, num_signals)
 
     # Dense matrix (all values are calculated, including duplicates)
     if dense
+        tensor = zeros(num_signals, num_signals)
         @simd for i = 1:num_signals
             @simd for j = 1:num_signals
                 @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j]) / adj
@@ -17,6 +17,7 @@ function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     # Convert to dense matrix using:
     #   tensor + tensor' - diagm(diag(tensor)))
     else
+        tensor = spzeros(num_signals, num_signals)
         @simd for i = 1:num_signals
             @simd for j = 1:i
                 @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j]) / adj
@@ -50,15 +51,26 @@ function coskew{T<:Real}(data::Matrix{T};
 
     # Flattened representation (i.e., unfolded to a matrix)
     if flatten
-        tensor = (Real)[]
-        @inbounds for i = 1:num_signals
-            face = zeros(num_signals, num_signals)
-            @simd for j = 1:num_signals
-                @simd for k = 1:num_signals
-                    @inbounds face[j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
+
+        if dense
+            tensor = zeros(num_signals, num_signals^2)
+            @inbounds for i = 1:num_signals
+                @simd for j = 1:num_signals
+                    @simd for k = 1:num_signals
+                        @inbounds tensor[j,(i-1)*num_signals+k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
+                    end
                 end
             end
-            @inbounds tensor = (i == 1) ? face : [tensor face]
+
+        else
+            tensor = spzeros(num_signals, num_signals^2)
+            @inbounds for i = 1:num_signals
+                @simd for j = 1:i
+                    @simd for k = 1:j
+                        @inbounds tensor[j,(i-1)*num_signals+k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
+                    end
+                end
+            end
         end
 
     # Cube: third-order tensor representation
@@ -113,16 +125,29 @@ function cokurt{T<:Real}(data::Matrix{T};
 
     # Flattened representation (i.e., unfolded into a matrix)
     if flatten
-        tensor = (Real)[]
-        @inbounds for i = 1:num_signals
-            @inbounds for j = 1:num_signals
-                face = zeros(num_signals, num_signals)
-                @simd for k = 1:num_signals
-                    @simd for l = 1:num_signals
-                        @inbounds face[k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
+
+        if dense
+            tensor = zeros(num_signals, num_signals^3)
+            @inbounds for i = 1:num_signals
+                @inbounds for j = 1:num_signals
+                    @simd for k = 1:num_signals
+                        @simd for l = 1:num_signals
+                            @inbounds tensor[k,(i-1)*num_signals^2 + (j-1)*num_signals + l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
+                        end
                     end
                 end
-                @inbounds tensor = (i == j == 1) ? face : [tensor face]
+            end
+
+        else
+            tensor = spzeros(num_signals, num_signals^3)
+            @inbounds for i = 1:num_signals
+                @inbounds for j = 1:i
+                    @simd for k = 1:j
+                        @simd for l = 1:k
+                            @inbounds tensor[k,(i-1)*num_signals^2 + (j-1)*num_signals + l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
+                        end
+                    end
+                end
             end
         end
 
