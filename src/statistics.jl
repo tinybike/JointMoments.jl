@@ -12,6 +12,9 @@ end
 _std{T<:Real}(data::Matrix{T}, avg::Vector{T}, rows::Int, cols::Int) = 
     vec([_std(data[:,j], avg[j], rows) for j in 1:cols])
 
+_std{T<:Real}(data::Matrix{T}, avg::Matrix{T}, rows::Int, cols::Int) = 
+    _std(data, vec(avg), rows, cols)
+
 normalize{T<:Real}(v::Vector{T}) = vec(v) / sum(v)
 
 normalize{T<:Real}(v::Matrix{T}) = normalize(vec(v))

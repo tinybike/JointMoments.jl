@@ -14,6 +14,12 @@ expected_cokurt_tensor = reshape(expected_cokurt, 3, 3, 3, 3)
 
 @test_approx_eq_eps coskew(data, flatten=true) expected_coskew ε
 @test_approx_eq_eps coskew(data) expected_coskew_tensor ε
+@test_approx_eq coskew(data, flatten=true)[1,4] coskew(data, flatten=true, dense=false)[1,4]
+@test_approx_eq coskew(data, flatten=true, dense=false)[1,4] coskew(data, dense=false)[2,1,1]
+@test_approx_eq coskew(data, dense=false)[2,1,1] coskew(data)[2,1,1]
 
 @test_approx_eq_eps cokurt(data, flatten=true) expected_cokurt ε
 @test_approx_eq_eps cokurt(data) expected_cokurt_tensor ε
+@test_approx_eq cokurt(data, flatten=true)[1,10] cokurt(data, flatten=true, dense=false)[1,10]
+@test_approx_eq cokurt(data, flatten=true, dense=false)[1,10] cokurt(data, dense=false)[2,1,1,1]
+@test_approx_eq cokurt(data, dense=false)[2,1,1,1] cokurt(data)[2,1,1,1]
