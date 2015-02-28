@@ -1,6 +1,6 @@
 module JointMoments
 
-export normalize, coskew, cokurt, coskewness, cokurtosis, _cov, _std, _transpose, _corners, _pairs
+export normalize, coskew, cokurt, coskewness, cokurtosis, _cov, _std
 
 include("tensors.jl")
 
