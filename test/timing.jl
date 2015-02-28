@@ -3,7 +3,7 @@ using JointMoments
 
 include("data.jl")
 
-const ITERMAX = 10
+const ITERMAX = 25
 
 function timing()
     time_cov = false
@@ -54,7 +54,7 @@ function timing()
                         )
                     end
                     row[:elapsed] = mean(elapse)
-                    row[:elapsed_error] = std(elapse)
+                    row[:elapsed_error] = std(elapse) / ITERMAX
                     if i == 2
                         if size(df) == (0,0)
                             for (key, value) in row
@@ -83,7 +83,7 @@ function timing()
                         )
                     end
                     row[:elapsed] = mean(elapse)
-                    row[:elapsed_error] = std(elapse)
+                    row[:elapsed_error] = std(elapse) / ITERMAX
                     if i == 2
                         if size(df) == (0,0)
                             for (key, value) in row
@@ -112,7 +112,7 @@ function timing()
                         )
                     end
                     row[:elapsed] = mean(elapse)
-                    row[:elapsed_error] = std(elapse)
+                    row[:elapsed_error] = std(elapse) / ITERMAX
                     if i == 2
                         if size(df) == (0,0)
                             for (key, value) in row

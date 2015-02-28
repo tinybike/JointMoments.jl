@@ -1,3 +1,8 @@
+# Outer (tensor) product
+function outer{N,a,b}(A::Array{N,a}, B::Array{N,b})
+    reshape(N[x*y for x in A, y in B], size(A)..., size(B)...)::Array{N,a+b}
+end
+
 # Covariance matrix (for testing)
 function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     num_samples, num_signals = size(data)
@@ -76,12 +81,9 @@ function coskew{T<:Real}(data::Matrix{T};
 
         # Dense: all values are calculated, including duplicates
         if dense
-            @simd for i = 1:num_signals
-                @simd for j = 1:num_signals
-                    @simd for k = 1:num_signals
-                        @inbounds tensor[i,j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k])
-                    end
-                end
+            @inbounds for i = 1:num_samples
+                c = cntr[i,:][:]
+                tensor += outer(c*c', c)
             end
 
         # Triangular: duplicate values ignored
@@ -127,7 +129,7 @@ function cokurt{T<:Real}(data::Matrix{T};
             tensor = zeros(num_signals, num_signals^3)
             @inbounds for i = 1:num_samples
                 c = cntr[i,:]
-                tensor += kron(c', kron(c, kron(c, c)))
+                tensor += kron(c'*c, c, c)
             end
 
         # Triangular: duplicate values ignored
@@ -150,14 +152,9 @@ function cokurt{T<:Real}(data::Matrix{T};
 
         # Dense: all values are calculated, including duplicates
         if dense
-            @simd for i = 1:num_signals
-                @simd for j = 1:num_signals
-                    @simd for k = 1:num_signals
-                        @simd for l = 1:num_signals
-                            @inbounds tensor[i,j,k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l])
-                        end
-                    end
-                end
+            @inbounds for i = 1:num_samples
+                c = cntr[i,:][:]
+                tensor += outer(outer(c*c', c), c)
             end
 
         # Triangular: duplicate values ignored
