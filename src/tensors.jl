@@ -1,77 +1,6 @@
-# Swap dimensions of a tensor (ndarray-transpose)
-function _transpose{T<:Real}(tensor::Array{T,3}, permute::Vector{Int})
-    shape = size(tensor)
-    ttensor = zeros(shape)
-    idx = zeros(3)
-    for idx[1] = 1:shape[1]
-        for idx[2] = 1:shape[2]
-            for idx[3] = 1:shape[3]
-                ttensor[idx[permute]...] = tensor[idx...]
-            end
-        end
-    end
-    ttensor
-end
-
-# Swap dimensions of a tensor (ndarray-transpose)
-function _transpose{T<:Real}(tensor::Array{T,4}, permute::Vector{Int})
-    shape = size(tensor)
-    ttensor = zeros(shape)
-    idx = zeros(4)
-    for idx[1] = 1:shape[1]
-        for idx[2] = 1:shape[2]
-            for idx[3] = 1:shape[3]
-                for idx[4] = 1:shape[4]
-                    ttensor[idx[permute]...] = tensor[idx...]
-                end
-            end
-        end
-    end
-    ttensor
-end
-
-function _corners{T<:Real}(tensor::Array{T})
-    shape = size(tensor)
-    N = ndims(tensor)
-    z = zeros(N)
-    corners = zeros(shape...)
-    for i = 1:shape[1]
-        idx = z + i
-        corners[idx...] = tensor[idx...]
-    end
-    corners
-end
-
-function _pairs{T<:Real}(tensor::Array{T,3}, swapped::Vector{Int})
-    shape = size(tensor)
-    N = ndims(tensor)
-    pairs = zeros(shape)
-    swapped = sort(swapped)
-    for i = 1:shape[1]
-        if swapped == [1,2]
-            pairs[:,:,i] = _corners(convert(Array, slice(tensor, :, :, i)))
-        elseif swapped == [1,3]
-            pairs[:,i,:] = _corners(convert(Array, slice(tensor, :, i, :)))
-        elseif swapped == [2,3]
-            pairs[i,:,:] = _corners(convert(Array, slice(tensor, i, :, :)))
-        end
-    end
-    pairs
-end
-
-function _dense{T<:Real}(tensor::Array{T})
-    refilled = similar(tensor)
-    permute = [1:ndims(tensor)]
-    for p in permutations(permute)
-        refilled += _transpose(tensor, p) - _pairs(tensor, find(p.!=permute))
-    end
-    refilled
-end
-
 # Covariance matrix (for testing)
 function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     num_samples, num_signals = size(data)
-    adj = num_samples - bias
     @inbounds cntr = data .- mean(data, 1)
 
     # Dense matrix (all values are calculated, including duplicates)
@@ -79,7 +8,7 @@ function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
         tensor = zeros(num_signals, num_signals)
         @simd for i = 1:num_signals
             @simd for j = 1:num_signals
-                @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j]) / adj
+                @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j])
             end
         end
 
@@ -90,11 +19,11 @@ function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
         tensor = spzeros(num_signals, num_signals)
         @simd for i = 1:num_signals
             @simd for j = 1:i
-                @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j]) / adj
+                @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j])
             end
         end
     end
-    tensor
+    tensor / (num_samples - bias)
 end
 
 # Coskewness tensor (third-order)
@@ -104,7 +33,6 @@ function coskew{T<:Real}(data::Matrix{T};
                          bias::Int=0,
                          dense::Bool=true)
     num_samples, num_signals = size(data)
-    adj = num_samples - bias
     @inbounds begin
         avgs = vec(mean(data, 1))
         cntr = data .- avgs'
@@ -125,12 +53,9 @@ function coskew{T<:Real}(data::Matrix{T};
         # Dense: all values are calculated, including duplicates
         if dense
             tensor = zeros(num_signals, num_signals^2)
-            @simd for i = 1:num_signals
-                @simd for j = 1:num_signals
-                    @simd for k = 1:num_signals
-                        @inbounds tensor[j,(i-1)*num_signals+k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
-                    end
-                end
+            @inbounds for i = 1:num_samples
+                c = cntr[i,:]
+                tensor += kron(c'*c, c)
             end
 
         # Triangular: duplicate values ignored
@@ -139,7 +64,7 @@ function coskew{T<:Real}(data::Matrix{T};
             @simd for i = 1:num_signals
                 @simd for j = 1:i
                     @simd for k = 1:j
-                        @inbounds tensor[j,(i-1)*num_signals+k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
+                        @inbounds tensor[j,(i-1)*num_signals+k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k])
                     end
                 end
             end
@@ -154,25 +79,23 @@ function coskew{T<:Real}(data::Matrix{T};
             @simd for i = 1:num_signals
                 @simd for j = 1:num_signals
                     @simd for k = 1:num_signals
-                        @inbounds tensor[i,j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
+                        @inbounds tensor[i,j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k])
                     end
                 end
             end
 
         # Triangular: duplicate values ignored
-        # To convert to dense form:
-        #   tensor + 
         else
             @simd for i = 1:num_signals
                 @simd for j = 1:i
                     @simd for k = 1:j
-                        @inbounds tensor[i,j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k]) / adj
+                        @inbounds tensor[i,j,k] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k])
                     end
                 end
             end
         end
     end
-    tensor
+    tensor / (num_samples - bias)
 end
 
 # Cokurtosis tensor (fourth-order)
@@ -182,7 +105,6 @@ function cokurt{T<:Real}(data::Matrix{T};
                          bias::Int=0,
                          dense::Bool=true)
     num_samples, num_signals = size(data)
-    adj = num_samples - bias
     @inbounds begin
         avgs = vec(mean(data, 1))
         cntr = data .- avgs'
@@ -203,25 +125,19 @@ function cokurt{T<:Real}(data::Matrix{T};
         # Dense: all values are calculated, including duplicates
         if dense
             tensor = zeros(num_signals, num_signals^3)
-            @simd for i = 1:num_signals
-                @simd for j = 1:num_signals
-                    @simd for k = 1:num_signals
-                        @simd for l = 1:num_signals
-                            @inbounds tensor[k,(i-1)*num_signals^2 + (j-1)*num_signals + l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
-                        end
-                    end
-                end
+            @inbounds for i = 1:num_samples
+                c = cntr[i,:]
+                tensor += kron(c', kron(c, kron(c, c)))
             end
 
         # Triangular: duplicate values ignored
         else
-            tensor = zeros(num_signals, num_signals^3)
-            # tensor = spzeros(num_signals, num_signals^3)
+            tensor = spzeros(num_signals, num_signals^3)
             @simd for i = 1:num_signals
                 @simd for j = 1:i
                     @simd for k = 1:j
                         @simd for l = 1:k
-                            @inbounds tensor[k,(i-1)*num_signals^2 + (j-1)*num_signals + l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
+                            @inbounds tensor[k,(i-1)*num_signals^2 + (j-1)*num_signals + l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l])
                         end
                     end
                 end
@@ -238,7 +154,7 @@ function cokurt{T<:Real}(data::Matrix{T};
                 @simd for j = 1:num_signals
                     @simd for k = 1:num_signals
                         @simd for l = 1:num_signals
-                            @inbounds tensor[i,j,k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
+                            @inbounds tensor[i,j,k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l])
                         end
                     end
                 end
@@ -250,12 +166,12 @@ function cokurt{T<:Real}(data::Matrix{T};
                 @simd for j = 1:i
                     @simd for k = 1:j
                         @simd for l = 1:k
-                            @inbounds tensor[i,j,k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l]) / adj
+                            @inbounds tensor[i,j,k,l] = sum(cntr[:,i].*cntr[:,j].*cntr[:,k].*cntr[:,l])
                         end
                     end
                 end
             end
         end
     end
-    tensor
+    tensor / (num_samples - bias)
 end
