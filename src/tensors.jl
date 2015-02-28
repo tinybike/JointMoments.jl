@@ -42,7 +42,7 @@ function _corners{T<:Real}(tensor::Array{T})
     corners
 end
 
-function _pairs{T<:Real}(tensor::Array{T}, swapped::Vector{Int})
+function _pairs{T<:Real}(tensor::Array{T,3}, swapped::Vector{Int})
     shape = size(tensor)
     N = ndims(tensor)
     pairs = zeros(shape)
@@ -57,16 +57,6 @@ function _pairs{T<:Real}(tensor::Array{T}, swapped::Vector{Int})
         end
     end
     pairs
-    # X = [i j k l]
-    # counts = {
-    #     repr(i) => 0,
-    # }
-    # for m = 1:4
-    #     idx = repr(X[m])
-    #     counts[idx] = (idx in keys(counts)) ? counts[idx] + 1 : 1
-    # end
-    # D = prod(map(factorial, values(counts)))
-    # factorial(4) / D
 end
 
 function _dense{T<:Real}(tensor::Array{T})
