@@ -6,8 +6,8 @@ include("data.jl")
 const ITERMAX = 25
 
 function timing()
-    time_cov = false
-    time_coskew = false
+    time_cov = true
+    time_coskew = true
     time_cokurt = true
     # datasets = (data, bigdata)
     datasets = (bigdata,)

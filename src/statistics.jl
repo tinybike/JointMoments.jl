@@ -1,5 +1,5 @@
 # Standard deviation of a vector without Bessel's correction
-function _std{T<:Real}(data::Vector{T}, avg::Real, n::Int)
+function Base.std{T<:Real}(data::Vector{T}, avg::Real, n::Int)
     s = 0.0
     for i = 1:n
         @inbounds z = data[i] - avg
@@ -9,11 +9,11 @@ function _std{T<:Real}(data::Vector{T}, avg::Real, n::Int)
 end
 
 # Per-column standard deviation of a matrix without Bessel's correction
-_std{T<:Real}(data::Matrix{T}, avg::Vector{T}, rows::Int, cols::Int) = 
-    vec([_std(data[:,j], avg[j], rows) for j in 1:cols])
+Base.std{T<:Real}(data::Matrix{T}, avg::Vector{T}, rows::Int, cols::Int) = 
+    vec([std(data[:,j], avg[j], rows) for j in 1:cols])
 
-_std{T<:Real}(data::Matrix{T}, avg::Matrix{T}, rows::Int, cols::Int) = 
-    _std(data, vec(avg), rows, cols)
+Base.std{T<:Real}(data::Matrix{T}, avg::Matrix{T}, rows::Int, cols::Int) = 
+    std(data, vec(avg), rows, cols)
 
 normalize{T<:Real}(v::Vector{T}) = vec(v) / sum(v)
 

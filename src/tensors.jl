@@ -1,20 +1,19 @@
 # Outer (tensor) product
-function outer{N,a,b}(A::Array{N,a}, B::Array{N,b})
-    reshape(N[x*y for x in A, y in B], size(A)..., size(B)...)::Array{N,a+b}
+function outer{N,a}(A::Array{N,a}, B::Vector{N})
+    reshape(N[x*y for x in A, y in B], size(A)..., size(B)...)::Array{N,a+1}
 end
 
-# Covariance matrix (for testing)
+# Covariance matrix with adjustable bias (Bessel's correction)
 function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     num_samples, num_signals = size(data)
     @inbounds cntr = data .- mean(data, 1)
 
-    # Dense matrix (all values are calculated, including duplicates)
+    # Dense matrix: all values are calculated, including duplicates
     if dense
         tensor = zeros(num_signals, num_signals)
-        @simd for i = 1:num_signals
-            @simd for j = 1:num_signals
-                @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j])
-            end
+        @inbounds for i = 1:num_samples
+            c = cntr[i,:]
+            tensor += c' * c
         end
 
     # Lower triangular matrix (duplicate values not calculated)
@@ -47,7 +46,7 @@ function coskew{T<:Real}(data::Matrix{T};
             if bias == 1
                 cntr ./= std(data, 1)
             else
-                cntr ./= _std(data, avgs, num_samples, num_signals)'
+                cntr ./= std(data, avgs, num_samples, num_signals)'
             end
         end
     end
@@ -116,7 +115,7 @@ function cokurt{T<:Real}(data::Matrix{T};
             if bias == 1
                 cntr ./= std(data, 1)
             else
-                cntr ./= _std(data, avgs, num_samples, num_signals)'
+                cntr ./= std(data, avgs, num_samples, num_signals)'
             end
         end
     end

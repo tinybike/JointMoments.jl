@@ -1,8 +1,8 @@
 @test sum(normalize(wt)) == 1
 
 num_samples, num_signals = size(data)
-@test _std(data, mean(data, 2), num_samples, num_signals) == _std(data, vec(mean(data, 2)), num_samples, num_signals)
-@test_approx_eq_eps _std(data, mean(data, 2), num_samples, num_signals) [1.67369, 0.959536, 1.2842] ε
+@test std(data, mean(data, 2), num_samples, num_signals) == std(data, vec(mean(data, 2)), num_samples, num_signals)
+@test_approx_eq_eps std(data, mean(data, 2), num_samples, num_signals) [1.67369, 0.959536, 1.2842] ε
 
 # Expected skewness, kurtosis, and central moments are calculated
 # using StatsBase.

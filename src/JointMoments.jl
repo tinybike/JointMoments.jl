@@ -1,9 +1,19 @@
 module JointMoments
 
-export normalize, coskew, cokurt, coskewness, cokurtosis, _cov, _std, outer
+    import Base: std
 
-include("tensors.jl")
+    export
+        normalize,
+        coskew,
+        cokurt,
+        coskewness,
+        cokurtosis,
+        std,
+        _cov,
+        outer
 
-include("statistics.jl")
+    include("tensors.jl")
+
+    include("statistics.jl")
 
 end # module
