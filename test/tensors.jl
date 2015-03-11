@@ -23,3 +23,52 @@ expected_cokurt_tensor = reshape(expected_cokurt, 3, 3, 3, 3)
 @test_approx_eq cokurt(data, flatten=true)[1,10] cokurt(data, flatten=true, dense=false)[1,10]
 @test_approx_eq cokurt(data, flatten=true, dense=false)[1,10] cokurt(data, dense=false)[2,1,1,1]
 @test_approx_eq cokurt(data, dense=false)[2,1,1,1] cokurt(data)[2,1,1,1]
+
+num_samples, num_signals = size(data)
+@inbounds begin
+    avgs = vec(mean(data, 1))
+    cntr = data .- avgs'
+end
+
+c = copy(cntr)
+
+covmat = _cov(data; bias=0)
+contrib = sum(covmat, 2)[:]
+
+sum_rows = sum(c,2)
+contribute = [
+    sum_rows' * c[:,1],
+    sum_rows' * c[:,2],
+    sum_rows' * c[:,3],
+] / num_samples
+@test all(contrib - contribute .< ε)
+
+standardize = true
+@inbounds begin
+    avgs = vec(mean(data, 1))
+    cntr = data .- avgs'
+    if standardize
+        cntr ./= std(data, avgs, num_samples, num_signals)'
+    end
+end
+
+c = copy(cntr)
+
+tensor = coskew(data; standardize=true, bias=0)
+contrib = sum(sum(tensor, 3), 2)[:]
+sum_rows = sum(c,2)
+contribute = [
+    sum_rows'.^2 * c[:,1],
+    sum_rows'.^2 * c[:,2],
+    sum_rows'.^2 * c[:,3],
+] / num_samples
+@test all(contrib - contribute .< ε)
+
+tensor = cokurt(data; standardize=true, bias=0)
+contrib = sum(sum(sum(tensor, 4), 3), 2)[:]
+contribute = [
+    sum_rows'.^3 * c[:,1],
+    sum_rows'.^3 * c[:,2],
+    sum_rows'.^3 * c[:,3],
+] / num_samples
+@test all(contrib - contribute .< ε)
