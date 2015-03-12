@@ -30,12 +30,10 @@ function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     tensor / (num_samples - bias)
 end
 
-# Coskewness tensor (third-order)
-function coskew{T<:Real}(data::Matrix{T};
+# Center data (also whiten if standardize=true)
+function center{T<:Real}(data::Matrix{T};
                          standardize::Bool=false,
-                         flatten::Bool=false,
-                         bias::Int=0,
-                         dense::Bool=true)
+                         bias::Int=0)
     num_samples, num_signals = size(data)
     @inbounds begin
         avgs = vec(mean(data, 1))
@@ -50,6 +48,37 @@ function coskew{T<:Real}(data::Matrix{T};
             end
         end
     end
+    (cntr, num_samples, num_signals)
+end
+
+# Contracted tensors (sum over all dimensions except first)
+function contraction{T<:Real}(data::Matrix{T},
+                              order::Int;
+                              standardize::Bool=false,
+                              bias::Int=0)
+
+    # Center/whiten data
+    cntr, num_samples, num_signals = center(data, standardize=standardize, bias=bias)
+
+    # Tensor contractions
+    sum_rows = sum(cntr, 2)
+    power = order - 1
+    [
+        sum_rows'.^power * cntr[:,1],
+        sum_rows'.^power * cntr[:,2],
+        sum_rows'.^power * cntr[:,3],
+    ] / (num_samples - bias)
+end
+
+# Coskewness tensor (third-order)
+function coskew{T<:Real}(data::Matrix{T};
+                         standardize::Bool=false,
+                         flatten::Bool=false,
+                         bias::Int=0,
+                         dense::Bool=true)
+
+    # Center/whiten data
+    cntr, num_samples, num_signals = center(data, standardize=standardize, bias=bias)
 
     # Flattened representation (i.e., unfolded to a matrix)
     if flatten
@@ -105,20 +134,9 @@ function cokurt{T<:Real}(data::Matrix{T};
                          flatten::Bool=false,
                          bias::Int=0,
                          dense::Bool=true)
-    num_samples, num_signals = size(data)
-    @inbounds begin
-        avgs = vec(mean(data, 1))
-        cntr = data .- avgs'
 
-        # Standardized moments: divide by the per-signal standard deviation
-        if standardize
-            if bias == 1
-                cntr ./= std(data, 1)
-            else
-                cntr ./= std(data, avgs, num_samples, num_signals)'
-            end
-        end
-    end
+    # Center/whiten data
+    cntr, num_samples, num_signals = center(data, standardize=standardize, bias=bias)
 
     # Flattened representation (i.e., unfolded into a matrix)
     if flatten

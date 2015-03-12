@@ -34,41 +34,12 @@ c = copy(cntr)
 
 covmat = _cov(data; bias=0)
 contrib = sum(covmat, 2)[:]
-
-sum_rows = sum(c,2)
-contribute = [
-    sum_rows' * c[:,1],
-    sum_rows' * c[:,2],
-    sum_rows' * c[:,3],
-] / num_samples
-@test all(contrib - contribute .< ε)
-
-standardize = true
-@inbounds begin
-    avgs = vec(mean(data, 1))
-    cntr = data .- avgs'
-    if standardize
-        cntr ./= std(data, avgs, num_samples, num_signals)'
-    end
-end
-
-c = copy(cntr)
+@test all(contrib - contraction(data, 2; bias=0) .< ε)
 
 tensor = coskew(data; standardize=true, bias=0)
-contrib = sum(sum(tensor, 3), 2)[:]
-sum_rows = sum(c,2)
-contribute = [
-    sum_rows'.^2 * c[:,1],
-    sum_rows'.^2 * c[:,2],
-    sum_rows'.^2 * c[:,3],
-] / num_samples
-@test all(contrib - contribute .< ε)
+contracted = sum(sum(tensor, 3), 2)[:]
+@test all(contracted - contraction(data, 3; standardize=true, bias=0) .< ε)
 
 tensor = cokurt(data; standardize=true, bias=0)
-contrib = sum(sum(sum(tensor, 4), 3), 2)[:]
-contribute = [
-    sum_rows'.^3 * c[:,1],
-    sum_rows'.^3 * c[:,2],
-    sum_rows'.^3 * c[:,3],
-] / num_samples
-@test all(contrib - contribute .< ε)
+contracted = sum(sum(sum(tensor, 4), 3), 2)[:]
+@test all(contracted - contraction(data, 4; standardize=true, bias=0) .< ε)
