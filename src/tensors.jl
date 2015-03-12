@@ -62,13 +62,8 @@ function contraction{T<:Real}(data::Matrix{T},
                                             standardize=standardize,
                                             bias=bias)
 
-    # Tensor contractions
-    power_sum = sum(cntr, 2)' .^ (order - 1)
-    [
-        power_sum * cntr[:,1],
-        power_sum * cntr[:,2],
-        power_sum * cntr[:,3],
-    ] / (num_samples - bias)
+    # Contraction
+    vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
 end
 
 # Coskewness tensor (third-order)

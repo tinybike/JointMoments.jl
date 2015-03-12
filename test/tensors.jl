@@ -24,20 +24,16 @@ expected_cokurt_tensor = reshape(expected_cokurt, 3, 3, 3, 3)
 @test_approx_eq cokurt(data, flatten=true, dense=false)[1,10] cokurt(data, dense=false)[2,1,1,1]
 @test_approx_eq cokurt(data, dense=false)[2,1,1,1] cokurt(data)[2,1,1,1]
 
-num_samples, num_signals = size(data)
-@inbounds begin
-    avgs = vec(mean(data, 1))
-    cntr = data .- avgs'
+for d in (data, bigdata)
+    covmat = _cov(d; bias=0)
+    contracted = sum(covmat, 2)[:]
+    @test all(contracted - contraction(d, 2; bias=0) .< ε)
+
+    tensor = coskew(d; standardize=true, bias=0)
+    contracted = sum(sum(tensor, 3), 2)[:]
+    @test all(contracted - contraction(d, 3; standardize=true, bias=0) .< ε)
+
+    tensor = cokurt(d; standardize=true, bias=0)
+    contracted = sum(sum(sum(tensor, 4), 3), 2)[:]
+    @test all(contracted - contraction(d, 4; standardize=true, bias=0) .< ε)
 end
-
-covmat = _cov(data; bias=0)
-contracted = sum(covmat, 2)[:]
-@test all(contracted - contraction(data, 2; bias=0) .< ε)
-
-tensor = coskew(data; standardize=true, bias=0)
-contracted = sum(sum(tensor, 3), 2)[:]
-@test all(contracted - contraction(data, 3; standardize=true, bias=0) .< ε)
-
-tensor = cokurt(data; standardize=true, bias=0)
-contracted = sum(sum(sum(tensor, 4), 3), 2)[:]
-@test all(contracted - contraction(data, 4; standardize=true, bias=0) .< ε)
