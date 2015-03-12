@@ -1,5 +1,3 @@
-using Debug
-
 # Outer (tensor) product
 function outer{N,a}(A::Array{N,a}, B::Vector{N})
     reshape(N[x*y for x in A, y in B], size(A)..., size(B)...)::Array{N,a+1}
