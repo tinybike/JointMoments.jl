@@ -30,11 +30,9 @@ num_samples, num_signals = size(data)
     cntr = data .- avgs'
 end
 
-c = copy(cntr)
-
 covmat = _cov(data; bias=0)
-contrib = sum(covmat, 2)[:]
-@test all(contrib - contraction(data, 2; bias=0) .< ε)
+contracted = sum(covmat, 2)[:]
+@test all(contracted - contraction(data, 2; bias=0) .< ε)
 
 tensor = coskew(data; standardize=true, bias=0)
 contracted = sum(sum(tensor, 3), 2)[:]

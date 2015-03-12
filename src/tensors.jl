@@ -1,3 +1,5 @@
+using Debug
+
 # Outer (tensor) product
 function outer{N,a}(A::Array{N,a}, B::Vector{N})
     reshape(N[x*y for x in A, y in B], size(A)..., size(B)...)::Array{N,a+1}
@@ -58,15 +60,16 @@ function contraction{T<:Real}(data::Matrix{T},
                               bias::Int=0)
 
     # Center/whiten data
-    cntr, num_samples, num_signals = center(data, standardize=standardize, bias=bias)
+    cntr, num_samples, num_signals = center(data,
+                                            standardize=standardize,
+                                            bias=bias)
 
     # Tensor contractions
-    sum_rows = sum(cntr, 2)
-    power = order - 1
+    power_sum = sum(cntr, 2)' .^ (order - 1)
     [
-        sum_rows'.^power * cntr[:,1],
-        sum_rows'.^power * cntr[:,2],
-        sum_rows'.^power * cntr[:,3],
+        power_sum * cntr[:,1],
+        power_sum * cntr[:,2],
+        power_sum * cntr[:,3],
     ] / (num_samples - bias)
 end
 
@@ -78,7 +81,9 @@ function coskew{T<:Real}(data::Matrix{T};
                          dense::Bool=true)
 
     # Center/whiten data
-    cntr, num_samples, num_signals = center(data, standardize=standardize, bias=bias)
+    cntr, num_samples, num_signals = center(data,
+                                            standardize=standardize,
+                                            bias=bias)
 
     # Flattened representation (i.e., unfolded to a matrix)
     if flatten
@@ -136,7 +141,9 @@ function cokurt{T<:Real}(data::Matrix{T};
                          dense::Bool=true)
 
     # Center/whiten data
-    cntr, num_samples, num_signals = center(data, standardize=standardize, bias=bias)
+    cntr, num_samples, num_signals = center(data,
+                                            standardize=standardize,
+                                            bias=bias)
 
     # Flattened representation (i.e., unfolded into a matrix)
     if flatten
