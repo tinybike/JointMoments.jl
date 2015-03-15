@@ -12,6 +12,9 @@ expected_cokurt_tensor = reshape(expected_cokurt, 3, 3, 3, 3)
 @test_approx_eq_eps _cov(data, bias=1) cov(data, corrected=true) ε
 @test_approx_eq_eps _cov(data, bias=0) cov(data, corrected=false) ε
 
+ltm = _cov(data, bias=0, dense=false)
+@test_approx_eq_eps(ltm + ltm' - diagm(diag(ltm)), _cov(data, bias=0, dense=true), ε)
+
 @test_approx_eq_eps coskew(data, flatten=true) expected_coskew ε
 @test_approx_eq_eps coskew(data) expected_coskew_tensor ε
 @test_approx_eq coskew(data, flatten=true)[1,4] coskew(data, flatten=true, dense=false)[1,4]
@@ -26,14 +29,14 @@ expected_cokurt_tensor = reshape(expected_cokurt, 3, 3, 3, 3)
 
 for d in (data, bigdata)
     covmat = _cov(d; bias=0)
-    contracted = sum(covmat, 2)[:]
-    @test all(contracted - contraction(d, 2; bias=0) .< ε)
+    summed = sum(covmat, 2)[:]
+    @test all(summed - coalesce(d, 2; bias=0) .< ε)
 
     tensor = coskew(d; standardize=true, bias=0)
-    contracted = sum(sum(tensor, 3), 2)[:]
-    @test all(contracted - contraction(d, 3; standardize=true, bias=0) .< ε)
+    summed = sum(sum(tensor, 3), 2)[:]
+    @test all(summed - coalesce(d, 3; standardize=true, bias=0) .< ε)
 
     tensor = cokurt(d; standardize=true, bias=0)
-    contracted = sum(sum(sum(tensor, 4), 3), 2)[:]
-    @test all(contracted - contraction(d, 4; standardize=true, bias=0) .< ε)
+    summed = sum(sum(sum(tensor, 4), 3), 2)[:]
+    @test all(summed - coalesce(d, 4; standardize=true, bias=0) .< ε)
 end

@@ -8,7 +8,7 @@ module JointMoments
         cokurt,
         coskewness,
         cokurtosis,
-        contraction,
+        coalesce,
         std,
         _cov,
         outer

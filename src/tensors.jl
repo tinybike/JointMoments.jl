@@ -20,7 +20,7 @@ function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     # Convert to dense matrix using:
     #   tensor + tensor' - diagm(diag(tensor)))
     else
-        tensor = spzeros(num_signals, num_signals)
+        tensor = zeros(num_signals, num_signals)
         @simd for i = 1:num_signals
             @simd for j = 1:i
                 @inbounds tensor[i,j] = sum(cntr[:,i].*cntr[:,j])
@@ -51,8 +51,8 @@ function center{T<:Real}(data::Matrix{T};
     (cntr, num_samples, num_signals)
 end
 
-# Contracted tensors (sum over all dimensions except first)
-function contraction{T<:Real}(data::Matrix{T},
+# Internal sum over all tensor dimensions except first
+function coalesce{T<:Real}(data::Matrix{T},
                               order::Int;
                               standardize::Bool=false,
                               bias::Int=0)
