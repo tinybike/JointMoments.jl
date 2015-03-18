@@ -30,7 +30,7 @@ function _cov{T<:Real}(data::Matrix{T}; bias::Int=0, dense::Bool=true)
     tensor / (num_samples - bias)
 end
 
-# Center data (also whiten if standardize=true)
+# Center, standardize, and/or weight data matrix
 function center{T<:Real}(data::Matrix{T};
                          standardize::Bool=false,
                          bias::Int=0)
@@ -44,25 +44,61 @@ function center{T<:Real}(data::Matrix{T};
             if bias == 1
                 cntr ./= std(data, 1)
             else
-                cntr ./= std(data, avgs, num_samples, num_signals)'
+                cntr ./= std(data, avgs', num_samples, num_signals)'
             end
         end
     end
     (cntr, num_samples, num_signals)
 end
 
-# Internal sum over all tensor dimensions except first
-function coalesce{T<:Real}(data::Matrix{T},
-                              order::Int;
-                              standardize::Bool=false,
-                              bias::Int=0)
+# Weight centered data
+function center{T<:Real}(data::Matrix{T},
+                         w::Vector{T};
+                         standardize::Bool=false,
+                         bias::Int=0)
+    num_samples, num_signals = size(data)
+    if sum(w) != 1
+        w = normalize(w)
+    end
+    @inbounds begin
+        avgs = w' * data
+        cntr = data .- avgs
+        if standardize
+            if bias == 1
+                cntr ./= std(cntr, 1)
+            else
+                cntr ./= std(cntr, mean(cntr, 1)', num_samples, num_signals)'
+            end
+        end
+    end
+    (cntr .* w, num_samples, num_signals)
+end
 
+# Internal sum over all tensor fibers (except first/rows)
+function coalesce{T<:Real}(data::Matrix{T},
+                           order::Int;
+                           standardize::Bool=false,
+                           bias::Int=0)
     # Center/whiten data
-    cntr, num_samples, num_signals = center(data,
+    cntr, num_samples, num_signals = center(data;
                                             standardize=standardize,
                                             bias=bias)
+    # Sum over fibers
+    vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
+end
 
-    # Contraction
+# Weighted coalescence
+function coalesce{T<:Real}(data::Matrix{T},
+                           w::Vector{T},
+                           order::Int;
+                           standardize::Bool=false,
+                           bias::Int=0)
+    # Center and weight data
+    cntr, num_samples, num_signals = center(data,
+                                            normalize(w);
+                                            standardize=standardize,
+                                            bias=bias)
+    # Sum over fibers
     vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
 end
 
@@ -74,7 +110,7 @@ function coskew{T<:Real}(data::Matrix{T};
                          dense::Bool=true)
 
     # Center/whiten data
-    cntr, num_samples, num_signals = center(data,
+    cntr, num_samples, num_signals = center(data;
                                             standardize=standardize,
                                             bias=bias)
 
@@ -134,7 +170,7 @@ function cokurt{T<:Real}(data::Matrix{T};
                          dense::Bool=true)
 
     # Center/whiten data
-    cntr, num_samples, num_signals = center(data,
+    cntr, num_samples, num_signals = center(data;
                                             standardize=standardize,
                                             bias=bias)
 
