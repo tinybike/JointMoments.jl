@@ -30,15 +30,15 @@ ltm = _cov(data, bias=0, dense=false)
 for d in (data, bigdata)
     covmat = _cov(d; bias=0)
     summed = sum(covmat, 2)[:]
-    @test all(summed - coalesce(d, 2; bias=0) .< ε)
+    @test all(summed - collapse(d, 2; bias=0) .< ε)
 
     tensor = coskew(d; standardize=true, bias=0)
     summed = sum(sum(tensor, 3), 2)[:]
-    @test all(summed - coalesce(d, 3; standardize=true, bias=0) .< ε)
+    @test all(summed - collapse(d, 3; standardize=true, bias=0) .< ε)
 
     tensor = cokurt(d; standardize=true, bias=0)
     summed = sum(sum(sum(tensor, 4), 3), 2)[:]
-    @test all(summed - coalesce(d, 4; standardize=true, bias=0) .< ε)
+    @test all(summed - collapse(d, 4; standardize=true, bias=0) .< ε)
 end
 
 weighted_center =  [ 0.0622965     0.0422869    0.133849   
@@ -66,9 +66,9 @@ weighted_center =  [ 0.0622965     0.0422869    0.133849
                     -0.0503171     0.0137864   -0.0511462  
                     -0.0149529     0.00510296  -0.00896664 ]
 
-weighted_coalesce = [ 0.000210328
+weighted_collapse = [ 0.000210328
                       0.000163799
                       0.000129309 ]
 
 @test all(center(data, w; standardize=true, bias=0)[1] - weighted_center .< ε)
-@test all(coalesce(data, w, 4; standardize=true, bias=0)[1] - weighted_coalesce .< ε)
+@test all(collapse(data, w, 4; standardize=true, bias=0)[1] - weighted_collapse .< ε)

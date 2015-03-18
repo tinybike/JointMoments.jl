@@ -74,8 +74,8 @@ function center{T<:Real}(data::Matrix{T},
     (cntr .* w, num_samples, num_signals)
 end
 
-# Internal sum over all tensor fibers (except first/rows)
-function coalesce{T<:Real}(data::Matrix{T},
+# Collapse tensor to vector: internal sum over fibers
+function collapse{T<:Real}(data::Matrix{T},
                            order::Int;
                            standardize::Bool=false,
                            bias::Int=0)
@@ -87,8 +87,8 @@ function coalesce{T<:Real}(data::Matrix{T},
     vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
 end
 
-# Weighted coalescence
-function coalesce{T<:Real}(data::Matrix{T},
+# Weighted tensor collapse
+function collapse{T<:Real}(data::Matrix{T},
                            w::Vector{T},
                            order::Int;
                            standardize::Bool=false,

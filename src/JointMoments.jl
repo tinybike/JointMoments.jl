@@ -9,7 +9,7 @@ module JointMoments
         coskewness,
         cokurtosis,
         center,
-        coalesce,
+        collapse,
         std,
         _cov,
         outer
