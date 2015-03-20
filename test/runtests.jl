@@ -1,8 +1,14 @@
 using JointMoments
 using Base.Test
 
+include("tolerance.jl")
+
+ε = 1e-4
+
 tests = ["data",
-         "tensors", 
+         "center",
+         "tensors",
+         "collapse", 
          "statistics"]
 
 println("Running tests:")

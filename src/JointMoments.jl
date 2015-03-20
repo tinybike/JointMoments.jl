@@ -14,8 +14,9 @@ module JointMoments
         _cov,
         outer
 
+    include("center.jl")
     include("tensors.jl")
-
+    include("collapse.jl")
     include("statistics.jl")
 
 end # module
