@@ -3,17 +3,17 @@ function center{T<:Real}(data::Matrix{T};
                          standardize::Bool=false,
                          bias::Int=0)
     num_samples, num_signals = size(data)
-    @inbounds begin
+    begin
         avgs = mean(data, 1)
         cntr = data .- avgs
 
         # Standardized moments: divide by the per-signal standard deviation
         if standardize
-            if bias == 1
-                cntr ./= std(data, 1)
-            else
-                cntr ./= std(data, vec(avgs), num_samples, num_signals)'
-            end
+            stddev = (bias == 1) ? std(data, 1) :
+                std(data, vec(avgs), num_samples, num_signals)'
+            all(stddev .!= 0) ||
+                error("Cannot standardize: variance = 0")
+            cntr ./= stddev
         end
     end
     (cntr, num_samples, num_signals)
@@ -28,7 +28,7 @@ function center{T<:Real}(data::Matrix{T},
     length(w) == num_samples || throw(DimensionMismatch("Inconsistent array lengths."))
 
     # Weighted detrending
-    @inbounds begin
+    begin
         avgs = mean(data, weights(w), 1)
         cntr = data .- avgs
         if standardize

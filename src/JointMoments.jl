@@ -1,7 +1,6 @@
 module JointMoments
 
     using StatsBase
-    using Debug
 
     import Base: std
 

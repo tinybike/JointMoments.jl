@@ -28,3 +28,15 @@ for standardize in (true, false)
         end
     end
 end
+
+@test_throws ErrorException collapse(nan_test_data,
+                                     nan_test_wt;
+                                     order=4,
+                                     standardize=true,
+                                     axis=2)
+
+@test all(~isnan(collapse(nan_test_data,
+                          nan_test_wt;
+                          order=4,
+                          standardize=false,
+                          axis=2)))

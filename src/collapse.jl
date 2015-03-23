@@ -28,15 +28,14 @@ function collapse{T<:Real}(data::Matrix{T},
                                                 bias=bias)
         vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
     else
-        w = round(w / minimum(w)) # replace this: loses information
-        replicated = replicate(data, w)'
+        w = round(w / minimum(w)) # replace -- information loss
         collapsed = collapse(
-            replicated;
+            replicate(data, w)';
             order=order,
             standardize=standardize,
             bias=bias,
         )
         recombined = recombine(collapsed, w)
-        normalize(recombined)
+        (normalized) ? normalize(recombined) : recombined
     end
 end
