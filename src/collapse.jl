@@ -4,6 +4,8 @@ function collapse{T<:Real}(data::Matrix{T};
                            standardize::Bool=false,
                            bias::Int=0,
                            normalized::Bool=false)
+    order > 1 || throw(DomainError())
+    
     # Center/whiten data
     cntr, num_samples, num_signals = center(data;
                                             standardize=standardize,
@@ -21,6 +23,7 @@ function collapse{T<:Real}(data::Matrix{T},
                            standardize::Bool=false,
                            bias::Int=0,
                            normalized::Bool=false)
+    order > 1 || throw(DomainError())
     if axis == 1
         cntr, num_samples, num_signals = center(data,
                                                 normalize(w);
@@ -28,14 +31,12 @@ function collapse{T<:Real}(data::Matrix{T},
                                                 bias=bias)
         vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
     else
-        w = round(w / minimum(w)) # replace -- information loss
         collapsed = collapse(
-            replicate(data, w)';
+            w'.*data';
             order=order,
             standardize=standardize,
             bias=bias,
         )
-        recombined = recombine(collapsed, w)
-        (normalized) ? normalize(recombined) : recombined
+        (normalized) ? normalize(collapsed) : collapsed
     end
 end

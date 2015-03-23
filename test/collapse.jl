@@ -29,14 +29,25 @@ for standardize in (true, false)
     end
 end
 
-@test_throws ErrorException collapse(nan_test_data,
-                                     nan_test_wt;
-                                     order=4,
-                                     standardize=true,
-                                     axis=2)
+# Replication testing (vs Hadamard product)
+for b in (0, 1)
+    for o = 2:20
+        @test_approx_eq(
+            recombine(collapse(replicate(data, w1)'; order=o, bias=b), w1),
+            collapse(w1'.*data'; order=o, bias=b),
+        )
+    end
+end
 
 @test all(~isnan(collapse(nan_test_data,
                           nan_test_wt;
                           order=4,
                           standardize=false,
                           axis=2)))
+
+@test_throws DomainError collapse(data, w1; order=1)
+@test_throws DomainError collapse(data; order=1)
+@test_throws ErrorException collapse(replicate(nan_test_data, nan_test_wt)';
+                                     order=4,
+                                     standardize=true,
+                                     axis=2)

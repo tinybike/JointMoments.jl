@@ -1,6 +1,8 @@
-# Replicate using weights
+# Weighted row-replication
 function replicate{T<:Real}(data::Matrix{T}, w::Vector{T})
     num_samples, num_signals = size(data)
+    length(w) == num_samples ||
+        throw(DimensionMismatch("Inconsistent array lengths."))
     replicated = zeros(int(sum(w)), num_signals)
     j = 1
     for i = 1:num_samples

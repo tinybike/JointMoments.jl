@@ -5,3 +5,5 @@ recombined = recombine(coll, w1)
 @test all(repl .== replicated)
 @test length(recombined) == length(w1)
 @test all(recombined .== recombine(collapse(repl'; order=4, standardize=true), w1))
+
+@test_throws DimensionMismatch replicate(data', w1)
