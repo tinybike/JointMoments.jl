@@ -1,29 +1,42 @@
 # Collapse tensor to vector: internal sum over fibers
-function collapse{T<:Real}(data::Matrix{T},
-                           order::Int;
+function collapse{T<:Real}(data::Matrix{T};
+                           order::Int=2,
                            standardize::Bool=false,
-                           bias::Int=0)
+                           bias::Int=0,
+                           normalized::Bool=false)
     # Center/whiten data
     cntr, num_samples, num_signals = center(data;
                                             standardize=standardize,
                                             bias=bias)
     # Sum over fibers
-    vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
+    collapsed = vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
+    (normalized) ? normalize(collapsed) : collapsed
 end
 
 # Weighted tensor collapse
 function collapse{T<:Real}(data::Matrix{T},
-                           w::Vector{T},
-                           order::Int;
-                           standardize::Bool=false,
+                           w::Vector{T};
+                           order::Int=2,
                            axis::Int=1,
-                           bias::Int=0)
-    # Center and weight data
-    cntr, num_samples, num_signals = center(data,
-                                            normalize(w);
-                                            axis=axis,
-                                            standardize=standardize,
-                                            bias=bias)
-    # Sum over fibers
-    vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
+                           standardize::Bool=false,
+                           bias::Int=0,
+                           normalized::Bool=false)
+    if axis == 1
+        cntr, num_samples, num_signals = center(data,
+                                                normalize(w);
+                                                standardize=standardize,
+                                                bias=bias)
+        vec(sum(cntr, 2)'.^(order - 1) * cntr) / (num_samples - bias)
+    else
+        w = round(w / minimum(w)) # replace this: loses information
+        replicated = replicate(data, w)'
+        collapsed = collapse(
+            replicated;
+            order=order,
+            standardize=standardize,
+            bias=bias,
+        )
+        recombined = recombine(collapsed, w)
+        normalize(recombined)
+    end
 end

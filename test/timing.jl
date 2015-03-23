@@ -9,8 +9,8 @@ function timing()
     time_cov = true
     time_coskew = true
     time_cokurt = true
-    # datasets = (data, bigdata)
-    datasets = (bigdata,)
+    datasets = (data, bigdata)
+    # datasets = (bigdata,)
     for (idx, dataset) in enumerate(datasets)
         df = DataFrame()
         rows, cols = size(dataset)

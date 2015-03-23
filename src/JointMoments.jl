@@ -1,5 +1,8 @@
 module JointMoments
 
+    using StatsBase
+    using Debug
+
     import Base: std
 
     export
@@ -11,11 +14,15 @@ module JointMoments
         center,
         collapse,
         std,
+        flip,
         _cov,
-        outer
+        outer,
+        replicate,
+        recombine
 
     include("center.jl")
     include("tensors.jl")
+    include("replicate.jl")
     include("collapse.jl")
     include("statistics.jl")
 

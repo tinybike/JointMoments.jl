@@ -1,12 +1,14 @@
 using JointMoments
 using Base.Test
 
+include("data.jl")
+include("precomputed.jl")
 include("tolerance.jl")
 
 ε = 1e-4
 
-tests = ["data",
-         "center",
+tests = ["center",
+         "replicate",
          "tensors",
          "collapse", 
          "statistics"]

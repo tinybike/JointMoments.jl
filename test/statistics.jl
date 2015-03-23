@@ -4,16 +4,6 @@ num_samples, num_signals = size(data)
 @test std(data, mean(data, 2), num_samples, num_signals) == std(data, vec(mean(data, 2)), num_samples, num_signals)
 @test_approx_eq_eps std(data, mean(data, 2), num_samples, num_signals) [1.67369, 0.959536, 1.2842] ε
 
-# Expected skewness, kurtosis, and central moments are calculated
-# using StatsBase.
-# (Note: + 3 has been added to the kurtosis values, to change the
-# cumulant into a standardized central moment.)
-expected_skewness = [0.2036496291131231, 1.055142530854644, 0.5466699866166419]
-expected_kurtosis = [3.2674593510418695, 4.065496961897709, 2.6149221488093146]
-
-expected_third_moment = [0.14757650128987837, 0.8615880265444518, 1.0178235320342266]
-expected_fourth_moment = [2.1267754676390918, 3.1028802049533724, 5.989470624146371]
-
 for i = 1:size(data, 2)
 
     # Compare standardized central moments

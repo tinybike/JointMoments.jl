@@ -1,32 +1,30 @@
-weighted_collapse = [ 20.5482
-                      16.8602
-                      10.0365 ]
+for standardize in (true, false)
+    for bias in (0, 1)
+        coll = collapse(data; order=4, standardize=standardize, bias=bias)
+        wcoll = collapse(data, uniform_weights;
+                         order=4, standardize=standardize, bias=bias)
+        @test tolerance(coll, wcoll)
 
-weighted_collapse_cols = [ -2044.85  
-                             133.236 
-                             434.136 
-                            7583.68  
-                           -2541.21  
-                             -14.7758
-                           -1584.42  
-                             354.702 
-                            -245.613 
-                             793.843 
-                             972.923 
-                            1104.47  
-                            2093.7   
-                            -728.741 
-                            -550.393 
-                            -674.196 
-                            1772.04  
-                            1253.68  
-                            3944.08  
-                            5514.91  
-                            -646.185 
-                              99.3528
-                            1516.22  
-                            1230.86  ]
+        # Verify equivalence to brute-force tensor collapse
+        for d in (data, bigdata)
 
-@test tolerance(weighted_collapse, collapse(data, w, 4; standardize=true, axis=1))
+            # Second order
+            covmat = _cov(d; bias=bias)
+            summed = sum(covmat, 2)[:]
+            collapsed = collapse(d; order=2, bias=bias)
+            @test tolerance(summed, collapsed)
 
-@test tolerance(weighted_collapse_cols, collapse(data', w, 4; standardize=true, axis=2))
+            # Third order
+            tensor = coskew(d; standardize=standardize, bias=bias)
+            summed = sum(sum(tensor, 3), 2)[:]
+            collapsed = collapse(d; order=3, standardize=standardize, bias=bias)
+            @test tolerance(summed, collapsed)
+
+            # Fourth order
+            tensor = cokurt(d; standardize=standardize, bias=bias)
+            summed = sum(sum(sum(tensor, 4), 3), 2)[:]
+            collapsed = collapse(d; order=4, standardize=standardize, bias=bias)
+            @test tolerance(summed, collapsed)
+        end
+    end
+end
