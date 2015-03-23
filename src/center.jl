@@ -3,7 +3,7 @@ function center{T<:Real}(data::Matrix{T};
                          standardize::Bool=false,
                          bias::Int=0)
     num_samples, num_signals = size(data)
-    begin
+    @inbounds begin
         avgs = mean(data, 1)
         cntr = data .- avgs
 
@@ -28,7 +28,7 @@ function center{T<:Real}(data::Matrix{T},
     length(w) == num_samples || throw(DimensionMismatch("Inconsistent array lengths."))
 
     # Weighted detrending
-    begin
+    @inbounds begin
         avgs = mean(data, weights(w), 1)
         cntr = data .- avgs
         if standardize
