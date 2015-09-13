@@ -1,6 +1,6 @@
 # JointMoments
 
-[![Build Status](https://travis-ci.org/tinybike/JointMoments.jl.svg?branch=master)](https://travis-ci.org/tinybike/JointMoments.jl) [![Coverage Status](https://coveralls.io/repos/tinybike/JointMoments.jl/badge.svg?branch=master)](https://coveralls.io/r/tinybike/JointMoments.jl?branch=master) [![JointMoments](http://pkg.julialang.org/badges/JointMoments_release.svg)](http://pkg.julialang.org/?pkg=JointMoments&ver=release)
+[![Build Status](https://travis-ci.org/tinybike/JointMoments.jl.svg?branch=master)](https://travis-ci.org/tinybike/JointMoments.jl) [![Coverage Status](https://coveralls.io/repos/tinybike/JointMoments.jl/badge.svg?branch=master)](https://coveralls.io/r/tinybike/JointMoments.jl?branch=master) [![JointMoments](http://pkg.julialang.org/badges/JointMoments_0.3.svg)](http://pkg.julialang.org/?pkg=JointMoments&ver=0.3)
 
 Tensors and statistics for third and fourth joint central moments.
 
